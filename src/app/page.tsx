@@ -1,36 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChatPanel } from "@/components/ChatPanel";
 import { BusinessCasePanel } from "@/components/BusinessCasePanel";
 import { MockupPanel } from "@/components/MockupPanel";
 import { StageIndicator } from "@/components/StageIndicator";
-import type { BusinessCaseDraft, ChatEnvelope } from "@/lib/types";
+import type { BusinessCaseDraft, ChatEnvelope, ChatMessage } from "@/lib/types";
+import { clearSession, loadSession, saveSession } from "@/lib/session-store";
 
 export default function Home() {
   const [draft, setDraft] = useState<BusinessCaseDraft | null>(null);
   const [mockupPrompt, setMockupPrompt] = useState<string | null>(null);
   const [stage, setStage] = useState(1);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  function handleEnvelope(env: ChatEnvelope, userTurns: number) {
-    // Keep the last non-null draft so the panel doesn't blank out mid-flow.
-    if (env.business_case_draft) setDraft(env.business_case_draft);
-    if (env.ui_mockup_prompt) setMockupPrompt(env.ui_mockup_prompt);
+  // `hydrated` gates the first render until we've checked localStorage, which
+  // keeps SSR and the initial client render in agreement (both show the
+  // placeholder) and prevents a fresh Stage 1 firing before a restore.
+  const [hydrated, setHydrated] = useState(false);
+  const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
+  // Remounts ChatPanel on reset so its internal start logic runs afresh.
+  const [sessionKey, setSessionKey] = useState(0);
 
-    // Derive the stage from the strongest available signal, never regressing.
-    let next = 1;
-    if (env.ui_mockup_prompt || mockupPrompt) next = 4;
-    else if (env.business_case_draft || draft) next = 3;
-    else if (userTurns >= 1) next = 2;
-    setStage((s) => Math.max(s, next));
+  useEffect(() => {
+    const restored = loadSession();
+    if (restored) {
+      setMessages(restored.messages);
+      setInitialMessages(restored.messages);
+      setDraft(restored.draft);
+      setMockupPrompt(restored.mockupPrompt);
+      setStage(restored.stage);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist whenever meaningful state changes (after hydration).
+  useEffect(() => {
+    if (!hydrated || messages.length === 0) return;
+    saveSession({ messages, draft, mockupPrompt, stage });
+  }, [hydrated, messages, draft, mockupPrompt, stage]);
+
+  const handleEnvelope = useCallback(
+    (env: ChatEnvelope, userTurns: number) => {
+      if (env.business_case_draft) setDraft(env.business_case_draft);
+      if (env.ui_mockup_prompt) setMockupPrompt(env.ui_mockup_prompt);
+
+      // Derive the stage from the strongest available signal, never regressing.
+      setStage((prev) => {
+        let next = 1;
+        if (env.ui_mockup_prompt) next = 4;
+        else if (env.business_case_draft) next = 3;
+        else if (userTurns >= 1) next = 2;
+        return Math.max(prev, next);
+      });
+    },
+    [],
+  );
+
+  const handleMessagesChange = useCallback((msgs: ChatMessage[]) => {
+    setMessages(msgs);
+  }, []);
+
+  function newSession() {
+    clearSession();
+    setDraft(null);
+    setMockupPrompt(null);
+    setStage(1);
+    setMessages([]);
+    setInitialMessages([]);
+    setSessionKey((k) => k + 1);
   }
 
   return (
     <main className="mx-auto flex h-screen max-w-7xl flex-col gap-4 p-5">
-      <StageIndicator stage={stage} />
+      <div className="flex items-center justify-between gap-4">
+        <StageIndicator stage={stage} />
+        <button
+          onClick={newSession}
+          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-st-blue transition hover:bg-slate-50"
+        >
+          New session
+        </button>
+      </div>
       <div className="flex min-h-0 flex-1 gap-5">
         <section className="w-[45%] min-w-[360px]">
-          <ChatPanel onEnvelope={handleEnvelope} />
+          {hydrated && (
+            <ChatPanel
+              key={sessionKey}
+              onEnvelope={handleEnvelope}
+              initialMessages={initialMessages}
+              onMessagesChange={handleMessagesChange}
+            />
+          )}
         </section>
         <aside className="flex flex-1 flex-col gap-5 overflow-y-auto">
           <BusinessCasePanel draft={draft} />

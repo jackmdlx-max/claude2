@@ -6,6 +6,11 @@ import type { ChatEnvelope, ChatMessage } from "@/lib/types";
 interface ChatPanelProps {
   /** Called after every engine reply, with the running count of user turns. */
   onEnvelope: (envelope: ChatEnvelope, userTurns: number) => void;
+  /** Restored conversation (e.g. from localStorage). When non-empty, the panel
+   *  resumes instead of kicking off a fresh Stage 1 greeting. */
+  initialMessages?: ChatMessage[];
+  /** Notified whenever the message list changes, so the parent can persist it. */
+  onMessagesChange?: (messages: ChatMessage[]) => void;
 }
 
 async function callEngine(messages: ChatMessage[]): Promise<ChatEnvelope> {
@@ -19,18 +24,20 @@ async function callEngine(messages: ChatMessage[]): Promise<ChatEnvelope> {
   return data as ChatEnvelope;
 }
 
-export function ChatPanel({ onEnvelope }: ChatPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: ChatPanelProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const started = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Kick off Stage 1: ask the engine for its opening greeting with no history.
+  // Kick off Stage 1 only for a fresh session. A restored conversation resumes
+  // where it left off rather than re-greeting.
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    if ((initialMessages?.length ?? 0) > 0) return;
     setBusy(true);
     callEngine([])
       .then((env) => {
@@ -39,7 +46,12 @@ export function ChatPanel({ onEnvelope }: ChatPanelProps) {
       })
       .catch((e) => setError(e.message))
       .finally(() => setBusy(false));
-  }, [onEnvelope]);
+  }, [onEnvelope, initialMessages]);
+
+  // Mirror the message list up to the parent for persistence.
+  useEffect(() => {
+    onMessagesChange?.(messages);
+  }, [messages, onMessagesChange]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

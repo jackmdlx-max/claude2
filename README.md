@@ -24,6 +24,8 @@ replies with a strict JSON envelope:
 
 The Next.js frontend renders this dynamically:
 
+- **Stage indicator** (top) — a 4-step progress bar (Context → Discovery →
+  Validation → Pitch) derived from the envelope signals.
 - **Chat window** (left) — the live discovery conversation.
 - **Business Case Draft** (right, top) — populates from `business_case_draft`
   as metrics get validated, with a headline ROI chip.
@@ -37,7 +39,8 @@ The Next.js frontend renders this dynamically:
 | --- | --- |
 | `src/lib/system-prompt.ts` | The ST-Streamline engine prompt (single source of truth). |
 | `src/lib/types.ts` | Shared `ChatEnvelope` / `BusinessCaseDraft` types. |
-| `src/app/api/chat/route.ts` | Calls Claude, extracts and validates the JSON envelope. |
+| `src/lib/envelope.ts` | Tolerant JSON-envelope extractor + normaliser (unit-tested). |
+| `src/app/api/chat/route.ts` | Calls Claude, then extracts and validates the JSON envelope. |
 | `src/app/api/mockup/route.ts` | Optional image generation for the Stage 4 mockup. |
 | `src/components/ChatPanel.tsx` | Chat UI; kicks off Stage 1 on load. |
 | `src/components/BusinessCasePanel.tsx` | Live business-case side panel. |
@@ -50,6 +53,7 @@ The Next.js frontend renders this dynamically:
 npm install
 cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
 npm run dev                   # http://localhost:3000
+npm test                     # unit tests for the envelope parser
 ```
 
 ### Environment variables

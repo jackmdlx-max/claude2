@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatEnvelope, ChatMessage } from "@/lib/types";
 
 interface ChatPanelProps {
-  onEnvelope: (envelope: ChatEnvelope) => void;
+  /** Called after every engine reply, with the running count of user turns. */
+  onEnvelope: (envelope: ChatEnvelope, userTurns: number) => void;
 }
 
 async function callEngine(messages: ChatMessage[]): Promise<ChatEnvelope> {
@@ -33,7 +34,7 @@ export function ChatPanel({ onEnvelope }: ChatPanelProps) {
     setBusy(true);
     callEngine([])
       .then((env) => {
-        onEnvelope(env);
+        onEnvelope(env, 0);
         setMessages([{ role: "assistant", content: env.chat_response }]);
       })
       .catch((e) => setError(e.message))
@@ -54,7 +55,8 @@ export function ChatPanel({ onEnvelope }: ChatPanelProps) {
     setBusy(true);
     try {
       const env = await callEngine(next);
-      onEnvelope(env);
+      const userTurns = next.filter((m) => m.role === "user").length;
+      onEnvelope(env, userTurns);
       setMessages([...next, { role: "assistant", content: env.chat_response }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");

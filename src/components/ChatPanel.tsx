@@ -84,7 +84,14 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
         <p className="text-xs text-slate-400">Workflow bottleneck auditor — capital business</p>
       </div>
 
-      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+      <div
+        ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label="Discovery conversation"
+        className="flex-1 space-y-4 overflow-y-auto px-5 py-5"
+      >
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
             <div
@@ -106,7 +113,10 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
           </div>
         )}
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600">
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600"
+          >
             {error}
           </div>
         )}
@@ -117,7 +127,9 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
           <textarea
             className="min-h-[44px] flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-st-navy outline-none focus:border-st-blue"
             placeholder="Type your reply…"
+            aria-label="Your reply"
             rows={1}
+            maxLength={4000}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

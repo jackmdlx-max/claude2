@@ -26,9 +26,14 @@ The Next.js frontend renders this dynamically:
 
 - **Stage indicator** (top) — a 4-step progress bar (Context → Discovery →
   Validation → Pitch) derived from the envelope signals.
-- **Chat window** (left) — the live discovery conversation.
+- **Config status badge** (top) — probes `/api/health` so a misconfigured
+  deployment (no API key) is obvious before you start typing.
+- **Chat window** (left) — the live discovery conversation. The conversation
+  persists across refreshes (localStorage) and can be wiped with *New session*.
 - **Business Case Draft** (right, top) — populates from `business_case_draft`
-  as metrics get validated, with a headline ROI chip.
+  as metrics get validated, with a headline ROI chip, a quantified ROI panel
+  (hours + annual £ saving at an editable loaded rate), and one-click export
+  to Markdown or JSON.
 - **UI Design Mockup** (right, bottom) — at Stage 4, renders `ui_mockup_prompt`
   as a generated image (if an image backend is configured) or a clean schematic
   spec card otherwise.
@@ -40,12 +45,18 @@ The Next.js frontend renders this dynamically:
 | `src/lib/system-prompt.ts` | The ST-Streamline engine prompt (single source of truth). |
 | `src/lib/types.ts` | Shared `ChatEnvelope` / `BusinessCaseDraft` types. |
 | `src/lib/envelope.ts` | Tolerant JSON-envelope extractor + normaliser (unit-tested). |
+| `src/lib/roi.ts` | ROI maths — hours and annual £ saving (unit-tested). |
+| `src/lib/business-case.ts` | Render the case as Markdown / JSON for export (unit-tested). |
+| `src/lib/session-store.ts` | localStorage persistence + pure `parseSession` validator (unit-tested). |
 | `src/app/api/chat/route.ts` | Calls Claude, then extracts and validates the JSON envelope. |
 | `src/app/api/mockup/route.ts` | Optional image generation for the Stage 4 mockup. |
-| `src/components/ChatPanel.tsx` | Chat UI; kicks off Stage 1 on load. |
-| `src/components/BusinessCasePanel.tsx` | Live business-case side panel. |
+| `src/app/api/health/route.ts` | Reports whether keys are configured + the active model. |
+| `src/components/ChatPanel.tsx` | Chat UI; kicks off Stage 1, resumes restored sessions. |
+| `src/components/BusinessCasePanel.tsx` | Live business-case side panel, ROI + export. |
 | `src/components/MockupPanel.tsx` | Mockup image / schematic spec card. |
-| `src/app/page.tsx` | Layout wiring the chat to both side panels. |
+| `src/components/StageIndicator.tsx` | 4-step stage progress bar. |
+| `src/components/ConfigStatus.tsx` | Deployment config badge. |
+| `src/app/page.tsx` | Layout, hydration/persistence, and stage derivation. |
 
 ## Getting started
 
@@ -53,8 +64,18 @@ The Next.js frontend renders this dynamically:
 npm install
 cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
 npm run dev                   # http://localhost:3000
-npm test                     # unit tests for the envelope parser
 ```
+
+## Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Local dev server. |
+| `npm run build` | Production build. |
+| `npm run lint` | ESLint (`next/core-web-vitals`). |
+| `npm test` | Unit tests (`node --test` via tsx) for the lib layer. |
+
+CI (`.github/workflows/ci.yml`) runs lint, test, and build on every push and PR.
 
 ### Environment variables
 

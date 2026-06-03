@@ -5,6 +5,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { BusinessCasePanel } from "@/components/BusinessCasePanel";
 import { MockupPanel } from "@/components/MockupPanel";
 import { StageIndicator } from "@/components/StageIndicator";
+import { ConfigStatus } from "@/components/ConfigStatus";
 import type { BusinessCaseDraft, ChatEnvelope, ChatMessage } from "@/lib/types";
 import { clearSession, loadSession, saveSession } from "@/lib/session-store";
 
@@ -75,12 +76,15 @@ export default function Home() {
     <main className="mx-auto flex h-screen max-w-7xl flex-col gap-4 p-5">
       <div className="flex items-center justify-between gap-4">
         <StageIndicator stage={stage} />
-        <button
-          onClick={newSession}
-          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-st-blue transition hover:bg-slate-50"
-        >
-          New session
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <ConfigStatus />
+          <button
+            onClick={newSession}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-st-blue transition hover:bg-slate-50"
+          >
+            New session
+          </button>
+        </div>
       </div>
       <div className="flex min-h-0 flex-1 gap-5">
         <section className="w-[45%] min-w-[360px]">

@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { ST_STREAMLINE_SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { extractEnvelope } from "@/lib/envelope";
+import { prepareMessages } from "@/lib/prepare-messages";
 import type { ChatRequest } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -24,7 +25,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 });
   }
 
-  const messages = Array.isArray(body.messages) ? body.messages : [];
+  // Coerce the UI transcript into a valid Anthropic message list (non-empty,
+  // starting with a user turn). See prepare-messages.ts.
+  const messages = prepareMessages(Array.isArray(body.messages) ? body.messages : []);
 
   const client = new Anthropic({ apiKey });
 
@@ -33,7 +36,7 @@ export async function POST(req: Request) {
       model: MODEL,
       max_tokens: 1024,
       system: ST_STREAMLINE_SYSTEM_PROMPT,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      messages,
     });
 
     const text = completion.content

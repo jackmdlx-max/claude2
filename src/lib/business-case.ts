@@ -69,3 +69,17 @@ export function businessCaseToMarkdown(
 export function businessCaseToJson(draft: BusinessCaseDraft): string {
   return JSON.stringify(draft, null, 2) + "\n";
 }
+
+/** Render the full discovery conversation as a readable Markdown transcript. */
+export function transcriptToMarkdown(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  opts: { generatedAt?: Date } = {},
+): string {
+  const date = (opts.generatedAt ?? new Date()).toISOString().slice(0, 10);
+  const lines = ["# ST-Streamline — Discovery Transcript", "", `*${date}*`, ""];
+  for (const m of messages) {
+    const who = m.role === "assistant" ? "**ST-Streamline:**" : "**You:**";
+    lines.push(`${who} ${m.content}`, "");
+  }
+  return lines.join("\n").trimEnd() + "\n";
+}

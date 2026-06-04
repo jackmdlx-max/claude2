@@ -12,6 +12,7 @@ import {
   toNumber,
   DEFAULT_LOADED_HOURLY_RATE_GBP,
 } from "@/lib/roi";
+import { download } from "@/lib/download";
 
 /** Friendly labels for the fields we know about; unknown keys are humanised. */
 const LABELS: Record<string, string> = {
@@ -34,16 +35,6 @@ function renderValue(value: unknown): string {
   if (Array.isArray(value)) return value.join(", ");
   if (value === null || value === undefined) return "—";
   return String(value);
-}
-
-function download(filename: string, contents: string, type: string) {
-  const blob = new Blob([contents], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export function BusinessCasePanel({ draft }: { draft: BusinessCaseDraft | null }) {

@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { businessCaseToMarkdown, businessCaseToJson } from "../src/lib/business-case";
+import {
+  businessCaseToMarkdown,
+  businessCaseToJson,
+  transcriptToMarkdown,
+} from "../src/lib/business-case";
 import type { BusinessCaseDraft } from "../src/lib/types";
 
 const DRAFT: BusinessCaseDraft = {
@@ -40,4 +44,17 @@ test("json export is pretty-printed and round-trips", () => {
   const json = businessCaseToJson(DRAFT);
   assert.deepEqual(JSON.parse(json), DRAFT);
   assert.match(json, /\n {2}"bottleneck"/);
+});
+
+test("transcript renders each turn with a speaker label", () => {
+  const md = transcriptToMarkdown(
+    [
+      { role: "assistant", content: "What's your role?" },
+      { role: "user", content: "Project controls." },
+    ],
+    { generatedAt: new Date("2026-06-03") },
+  );
+  assert.match(md, /# ST-Streamline — Discovery Transcript/);
+  assert.match(md, /\*\*ST-Streamline:\*\* What's your role\?/);
+  assert.match(md, /\*\*You:\*\* Project controls\./);
 });

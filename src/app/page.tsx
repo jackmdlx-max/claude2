@@ -8,6 +8,7 @@ import { StageIndicator } from "@/components/StageIndicator";
 import { ConfigStatus } from "@/components/ConfigStatus";
 import type { BusinessCaseDraft, ChatEnvelope, ChatMessage } from "@/lib/types";
 import { clearSession, loadSession, saveSession } from "@/lib/session-store";
+import { deriveStage } from "@/lib/stage";
 
 export default function Home() {
   const [draft, setDraft] = useState<BusinessCaseDraft | null>(null);
@@ -46,14 +47,13 @@ export default function Home() {
       if (env.business_case_draft) setDraft(env.business_case_draft);
       if (env.ui_mockup_prompt) setMockupPrompt(env.ui_mockup_prompt);
 
-      // Derive the stage from the strongest available signal, never regressing.
-      setStage((prev) => {
-        let next = 1;
-        if (env.ui_mockup_prompt) next = 4;
-        else if (env.business_case_draft) next = 3;
-        else if (userTurns >= 1) next = 2;
-        return Math.max(prev, next);
-      });
+      setStage((prev) =>
+        deriveStage(prev, {
+          hasMockup: Boolean(env.ui_mockup_prompt),
+          hasDraft: Boolean(env.business_case_draft),
+          userTurns,
+        }),
+      );
     },
     [],
   );

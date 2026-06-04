@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server";
+import { isDemoMode } from "@/lib/demo-engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Lightweight config probe for the UI. Reports *whether* the relevant keys are
- * configured (never their values) plus the active model, so the frontend can
- * warn the user before they start typing into a misconfigured deployment.
+ * configured (never their values), whether the app is running the scripted demo
+ * engine, and the active model — so the frontend can set expectations before
+ * the user starts typing.
  */
 export function GET() {
+  const demo = isDemoMode();
   return NextResponse.json({
-    chat_ready: Boolean(process.env.ANTHROPIC_API_KEY),
+    chat_ready: !demo,
+    demo,
     image_ready: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
+    model: demo ? "demo · scripted walkthrough" : process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
   });
 }

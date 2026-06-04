@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 
 interface Health {
   chat_ready: boolean;
+  demo: boolean;
   image_ready: boolean;
   model: string;
 }
 
 /**
- * Small badge that surfaces deployment config (is the Claude key set? which
- * model?) so a user isn't surprised by an error on their first message.
+ * Small badge that surfaces deployment config (live engine, scripted demo, or
+ * missing key — and which model) so a user isn't surprised by their first turn.
  */
 export function ConfigStatus() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -25,6 +26,19 @@ export function ConfigStatus() {
 
   if (failed) return null;
   if (!health) return null;
+
+  // Scripted walkthrough — no API key needed, no cost.
+  if (health.demo) {
+    return (
+      <div
+        className="flex shrink-0 items-center gap-2 rounded-lg border border-st-sky/40 bg-st-sky/10 px-3 py-1.5 text-xs"
+        title="Scripted walkthrough — no API key needed. Set ANTHROPIC_API_KEY in your environment to switch on live AI."
+      >
+        <span className="h-2 w-2 rounded-full bg-st-sky" />
+        <span className="font-medium text-st-blue">Demo mode</span>
+      </div>
+    );
+  }
 
   const ok = health.chat_ready;
   return (

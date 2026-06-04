@@ -1,8 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import { ST_STREAMLINE_SYSTEM_PROMPT } from "@/lib/system-prompt";
-import { extractEnvelope } from "@/lib/envelope";
-import { prepareMessages } from "@/lib/prepare-messages";
+import { runEngineTurn, type MessageCreateParams } from "@/lib/engine";
 import type { ChatRequest } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -25,26 +23,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 });
   }
 
-  // Coerce the UI transcript into a valid Anthropic message list (non-empty,
-  // starting with a user turn). See prepare-messages.ts.
-  const messages = prepareMessages(Array.isArray(body.messages) ? body.messages : []);
-
+  const messages = Array.isArray(body.messages) ? body.messages : [];
   const client = new Anthropic({ apiKey });
 
   try {
-    const completion = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      system: ST_STREAMLINE_SYSTEM_PROMPT,
+    const envelope = await runEngineTurn(
+      (params: MessageCreateParams) => client.messages.create(params),
+      MODEL,
       messages,
-    });
-
-    const text = completion.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("");
-
-    const envelope = extractEnvelope(text);
+    );
     return NextResponse.json(envelope);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error talking to the engine.";

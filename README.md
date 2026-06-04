@@ -87,8 +87,9 @@ This is a standard Next.js app and deploys to Vercel with zero extra config.
 
 1. Go to <https://vercel.com/new>, connect GitHub, and import `jackmdlx-max/claude2`.
 2. Framework preset auto-detects as **Next.js** — leave the build/output defaults.
-3. Add the environment variable **`ANTHROPIC_API_KEY`** (and optionally
-   `ANTHROPIC_MODEL` / `OPENAI_API_KEY`).
+3. *(Optional)* Add **`ANTHROPIC_API_KEY`** for live AI (plus optionally
+   `ANTHROPIC_MODEL` / `OPENAI_API_KEY`). **Skip it and the app deploys in
+   [demo mode](#demo-mode)** — fully clickable, no key, no cost.
 4. Deploy. Every branch then gets its own **Preview** URL — e.g. pushing
    `claude/modest-hamilton-AVwGE` yields a shareable preview link **without
    merging to `main`**. Promote a deployment to Production (or merge the branch
@@ -112,9 +113,21 @@ vercel --prod       # production deploy → prints the live URL
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | yes | Auth for the Claude API. |
+| `ANTHROPIC_API_KEY` | no* | Auth for the Claude API. *Without it the app runs in **demo mode** (see below) instead of erroring — set it for live AI. |
 | `ANTHROPIC_MODEL` | no | Override the model (defaults to `claude-opus-4-8`). |
 | `OPENAI_API_KEY` | no | Enables real image generation in the mockup panel. Without it, the panel shows the prompt as a spec card. |
+| `DEMO_MODE` | no | Set to `1` to force demo mode even when `ANTHROPIC_API_KEY` is present. |
+
+### Demo mode
+
+If no `ANTHROPIC_API_KEY` is configured (or `DEMO_MODE=1`), the chat is served by
+a **scripted walkthrough** (`src/lib/demo-engine.ts`) instead of Claude — no key,
+no API cost. It mirrors the real engine's envelope contract and walks the same
+four stages (warm-up → discovery → validation → re-time pitch), so the chat,
+business-case panel, ROI maths and mockup spec card all populate exactly as they
+would live. A **Demo mode** badge in the header makes the state obvious. Drop in
+a real key and redeploy to switch on live AI. This is what makes a zero-config
+Vercel deploy show a working app immediately.
 
 ## Notes
 

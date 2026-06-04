@@ -77,6 +77,37 @@ npm run dev                   # http://localhost:3000
 
 CI (`.github/workflows/ci.yml`) runs lint, test, and build on every push and PR.
 
+## Deploy (Vercel)
+
+This is a standard Next.js app and deploys to Vercel with zero extra config.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fjackmdlx-max%2Fclaude2&env=ANTHROPIC_API_KEY&envDescription=Anthropic%20API%20key%20for%20the%20ST-Streamline%20engine&envLink=https%3A%2F%2Fconsole.anthropic.com%2F&project-name=st-streamline&repository-name=st-streamline)
+
+**Recommended: import the repo (gives a shareable preview URL per branch)**
+
+1. Go to <https://vercel.com/new>, connect GitHub, and import `jackmdlx-max/claude2`.
+2. Framework preset auto-detects as **Next.js** — leave the build/output defaults.
+3. Add the environment variable **`ANTHROPIC_API_KEY`** (and optionally
+   `ANTHROPIC_MODEL` / `OPENAI_API_KEY`).
+4. Deploy. Every branch then gets its own **Preview** URL — e.g. pushing
+   `claude/modest-hamilton-AVwGE` yields a shareable preview link **without
+   merging to `main`**. Promote a deployment to Production (or merge the branch
+   into `main`) when you're ready for the stable URL.
+
+**Or via the CLI** (deploys your current checkout, so run it on the branch):
+
+```bash
+npm i -g vercel
+vercel              # first run links/creates the project
+vercel env add ANTHROPIC_API_KEY   # paste your key
+vercel --prod       # production deploy → prints the live URL
+```
+
+> Note: the one-click button above clones the repo's **default branch**
+> (`main`), which currently holds only the initial commit. Until this branch is
+> merged, use the *import the repo* flow (preview URL) or the CLI from the
+> branch.
+
 ### Environment variables
 
 | Variable | Required | Purpose |

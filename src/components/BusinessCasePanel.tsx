@@ -29,6 +29,9 @@ const LABELS: Record<string, string> = {
   target_solution: "Proposed solution",
   strategic_alignment: "Strategic alignment",
   complexity: "Complexity",
+  key_risks: "Key risks",
+  assumptions: "Assumptions",
+  options_considered: "Options considered",
 };
 
 function humanise(key: string): string {

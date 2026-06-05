@@ -3,7 +3,7 @@ import { extractEnvelope } from "./envelope";
 import { prepareMessages } from "./prepare-messages";
 import { ST_STREAMLINE_SYSTEM_PROMPT } from "./system-prompt";
 
-export const DEFAULT_MAX_TOKENS = 1024;
+export const DEFAULT_MAX_TOKENS = 2048;
 
 /** The minimal slice of the Anthropic Messages API the engine depends on. */
 export interface MessageCreateParams {

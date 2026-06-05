@@ -73,7 +73,9 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto flex h-screen max-w-7xl flex-col gap-4 p-5">
+    // On small screens the whole page scrolls vertically (chat on top, panels
+    // below). At `lg:` we switch to a full-height, fixed side-by-side split.
+    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-5 lg:h-screen">
       <div className="flex items-center justify-between gap-4">
         <StageIndicator stage={stage} />
         <div className="flex shrink-0 items-center gap-2">
@@ -86,8 +88,8 @@ export default function Home() {
           </button>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 gap-5">
-        <section className="w-[45%] min-w-[360px]">
+      <div className="flex min-h-0 flex-1 flex-col gap-5 lg:flex-row">
+        <section className="h-[60vh] lg:h-auto lg:w-[45%] lg:min-w-[360px]">
           {hydrated && (
             <ChatPanel
               key={sessionKey}
@@ -97,7 +99,7 @@ export default function Home() {
             />
           )}
         </section>
-        <aside className="flex flex-1 flex-col gap-5 overflow-y-auto">
+        <aside className="flex flex-col gap-5 lg:flex-1 lg:overflow-y-auto">
           <BusinessCasePanel draft={draft} />
           <MockupPanel prompt={mockupPrompt} />
         </aside>

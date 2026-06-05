@@ -73,10 +73,47 @@ function mockupPromptFor(systems: string[]): string {
 }
 
 /**
+ * The scripted answers captured so far, in script order. Each user turn after
+ * the friction-discovery answer feeds one of these probing slots, so the draft
+ * deepens turn by turn just as the live engine's would.
+ */
+interface CapturedAnswers {
+  bottleneck: string;
+  purpose?: string;
+  decisions_supported?: string;
+  relied_on_by?: string;
+  systems_involved?: string[];
+  depends_on?: string;
+}
+
+/** Build the cumulative draft from whatever has been captured up to this turn. */
+function buildDraft(captured: CapturedAnswers): Record<string, unknown> {
+  const draft: Record<string, unknown> = {
+    bottleneck: captured.bottleneck,
+    strategic_alignment: STRATEGIC_ALIGNMENT,
+  };
+  if (captured.purpose !== undefined) draft.purpose = captured.purpose;
+  if (captured.decisions_supported !== undefined)
+    draft.decisions_supported = captured.decisions_supported;
+  if (captured.relied_on_by !== undefined) draft.relied_on_by = captured.relied_on_by;
+  if (captured.systems_involved !== undefined)
+    draft.systems_involved = captured.systems_involved;
+  if (captured.depends_on !== undefined) draft.depends_on = captured.depends_on;
+  return draft;
+}
+
+/**
  * Produce one scripted turn. The stage is driven purely by how many user turns
  * have happened, so a resumed session (restored from localStorage) continues
  * from the right place. Returns the exact same envelope shape as the live
  * engine, so nothing downstream needs to know it's a demo.
+ *
+ * Script arc (one question per turn, peer-to-peer tone):
+ *   0 greet → role/team        · 1 friction → the task
+ *   2 purpose                  · 3 downstream decisions/outputs
+ *   4 who relies on it         · 5 systems involved
+ *   6 dependencies/blockers    · 7 hours & people
+ *   8 re-time pitch + mockup   · 9+ terminal wrap (non-repeating)
  */
 export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
   const users = history.filter((m) => m.role === "user").map((m) => m.content);
@@ -105,62 +142,109 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
     };
   }
 
-  const bottleneck = clip(users[1] ?? "Repetitive manual data-handling task");
+  // From here on we accumulate each captured answer into the draft, one per turn.
+  const captured: CapturedAnswers = {
+    bottleneck: clip(users[1] ?? "Repetitive manual data-handling task"),
+  };
 
-  // Stage 3a — probe the systems involved (first draft fields appear here).
+  // Stage 3a — purpose: why is the task done, what's it for? (draft opens here).
   if (step === 2) {
     return {
       chat_response:
         "Got it — that's exactly the sort of bottleneck worth pinning down. " +
-        "Which systems or tools are involved when you do it? (For example Excel, SAP, SharePoint, Power BI, Outlook…)",
-      business_case_draft: {
-        bottleneck,
-        strategic_alignment: STRATEGIC_ALIGNMENT,
-      },
+        "Before we size it up, help me understand the why: what's the purpose of that task — what's it actually for, or what does it produce?",
+      business_case_draft: buildDraft(captured),
       ui_mockup_prompt: null,
     };
   }
 
-  const systems = detectSystems(users[2] ?? "");
+  captured.purpose = clip(users[2] ?? "");
 
-  // Stage 3b — probe the hours lost and the number of people affected.
+  // Stage 3b — downstream decisions / outputs that depend on it.
   if (step === 3) {
     return {
       chat_response:
-        "Perfect. Two quick numbers and we'll have enough to size this up: " +
+        "That's useful context. Now, what decisions or downstream outputs hang off it — " +
+        "what gets decided, reported, or actioned because of the work you put in?",
+      business_case_draft: buildDraft(captured),
+      ui_mockup_prompt: null,
+    };
+  }
+
+  captured.decisions_supported = clip(users[3] ?? "");
+
+  // Stage 3c — who relies on the output (team / role / stakeholder).
+  if (step === 4) {
+    return {
+      chat_response:
+        "Makes sense. And who actually relies on that output — which team, role or stakeholder is waiting on it downstream?",
+      business_case_draft: buildDraft(captured),
+      ui_mockup_prompt: null,
+    };
+  }
+
+  captured.relied_on_by = clip(users[4] ?? "");
+
+  // Stage 3d — systems / tools involved.
+  if (step === 5) {
+    return {
+      chat_response:
+        "Good — that tells me who's affected if it slips. " +
+        "Which systems or tools are involved when you do it? (For example Excel, SAP, SharePoint, Power BI, Outlook…)",
+      business_case_draft: buildDraft(captured),
+      ui_mockup_prompt: null,
+    };
+  }
+
+  captured.systems_involved = detectSystems(users[5] ?? "");
+
+  // Stage 3e — dependencies: upstream inputs, what must be in place, blockers.
+  if (step === 6) {
+    return {
+      chat_response:
+        "Right, that gives me the toolchain. " +
+        "What does the task depend on to get going — any upstream inputs, things that have to be in place first, or blockers that hold it up?",
+      business_case_draft: buildDraft(captured),
+      ui_mockup_prompt: null,
+    };
+  }
+
+  captured.depends_on = clip(users[6] ?? "");
+
+  // Stage 3f — the two numbers we need to quantify the saving.
+  if (step === 7) {
+    return {
+      chat_response:
+        "Perfect — I've got the full picture now. Two quick numbers and we can size this up: " +
         "roughly how many hours a week does it cost you, and how many people on the team do the same thing?",
-      business_case_draft: {
-        bottleneck,
-        systems_involved: systems,
-        strategic_alignment: STRATEGIC_ALIGNMENT,
-      },
+      business_case_draft: buildDraft(captured),
       ui_mockup_prompt: null,
     };
   }
 
   // Stage 4 — re-time pitch + mockup trigger (full draft + mockup prompt).
-  const { hours, people } = parseHoursAndPeople(users[3] ?? "");
+  const { hours, people } = parseHoursAndPeople(users[7] ?? "");
   const weeklyTotal = hours * people;
   const estHoursSavedMonth = Math.round(weeklyTotal * 4);
   const roiYearlyHours = Math.round(estHoursSavedMonth * 12);
 
+  const systems = captured.systems_involved ?? ["Excel"];
   const draft = {
-    bottleneck,
+    ...buildDraft(captured),
     systems_involved: systems,
     hours_per_week: hours,
     people_affected: people,
     est_hours_saved_month: estHoursSavedMonth,
     roi_yearly_hours: roiYearlyHours,
     target_solution: TARGET_SOLUTION,
-    strategic_alignment: STRATEGIC_ALIGNMENT,
     complexity: "Medium",
   };
   const mockup = mockupPromptFor(systems);
 
-  if (step === 4) {
+  if (step === 8) {
     return {
       chat_response:
-        `Right, here's how I read the business case. That bottleneck — "${bottleneck}" — is costing the team about ${weeklyTotal} hours a week, ` +
+        `Right, here's how I read the business case. That bottleneck — "${captured.bottleneck}" — is costing the team about ${weeklyTotal} hours a week, ` +
         `which is roughly ${estHoursSavedMonth} hours a month, or ${roiYearlyHours} hours a year handed back if we automate it. ` +
         "My proposal is a Power Automate flow wired into the relevant systems via internal APIs so the data updates itself weekly. " +
         "I've put the full case in the side panel and generated a UI mockup of the data flow on the right. Does that line up with what you had in mind?",
@@ -169,12 +253,25 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
     };
   }
 
-  // Stage 4+ — keep the finalised case and mockup on screen, and wrap up.
+  // Stage 4 wrap — a single, distinct close-out the turn after the pitch. Keeps
+  // the finalised case + mockup on screen and points to the export / restart
+  // affordances rather than looping a question.
+  if (step === 9) {
+    return {
+      chat_response:
+        "Great — that's the audit complete. The finalised business case is in the side panel " +
+        "(tweak the £/hr rate there to re-price the saving, or export it as Markdown or JSON), " +
+        'and the data-flow mockup is on the right. When you\'re ready to audit another bottleneck, hit "New session".',
+      business_case_draft: draft,
+      ui_mockup_prompt: mockup,
+    };
+  }
+
+  // Terminal state — any turn beyond the wrap-up. A graceful, non-repeating
+  // closer so the conversation never loops the same question forever.
   return {
     chat_response:
-      "Glad that lands. You can tweak the £/hr rate in the business-case panel to re-price the saving, " +
-      'export the case as Markdown or JSON, or hit "New session" to run another bottleneck. ' +
-      "Anything else you'd want the automation to cover?",
+      'This audit is complete — hit "New session" to run another bottleneck.',
     business_case_draft: draft,
     ui_mockup_prompt: mockup,
   };

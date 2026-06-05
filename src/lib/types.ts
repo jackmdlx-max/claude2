@@ -16,7 +16,15 @@ export interface ChatMessage {
  */
 export interface BusinessCaseDraft {
   bottleneck?: string;
+  /** Why the task is done / what it produces. */
+  purpose?: string;
+  /** Downstream decisions or outputs that hang off the task. */
+  decisions_supported?: string;
+  /** Which team, role or stakeholder relies on the output. */
+  relied_on_by?: string;
   systems_involved?: string[];
+  /** Upstream inputs / pre-conditions / blockers the task depends on. */
+  depends_on?: string;
   hours_per_week?: number;
   people_affected?: number;
   est_hours_saved_month?: number;

@@ -17,7 +17,11 @@ import { download } from "@/lib/download";
 /** Friendly labels for the fields we know about; unknown keys are humanised. */
 const LABELS: Record<string, string> = {
   bottleneck: "Bottleneck",
+  purpose: "Purpose",
+  decisions_supported: "Decisions supported",
+  relied_on_by: "Relied on by",
   systems_involved: "Systems involved",
+  depends_on: "Depends on",
   hours_per_week: "Hours / week lost",
   people_affected: "People affected",
   est_hours_saved_month: "Est. hours saved / month",

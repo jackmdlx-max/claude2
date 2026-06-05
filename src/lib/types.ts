@@ -32,7 +32,56 @@ export interface BusinessCaseDraft {
   target_solution?: string;
   strategic_alignment?: string;
   complexity?: string;
+  /** Key risks the case must address. */
+  key_risks?: string;
+  /** Stated assumptions behind the figures. */
+  assumptions?: string;
+  /** Options weighed (do-nothing / do-minimum / preferred). */
+  options_considered?: string;
   // Allow forward-compatible extra fields without breaking the renderer.
+  [key: string]: unknown;
+}
+
+/** A node in the proposed solution's data/process flow. */
+export interface SolutionComponent {
+  /** Short label, e.g. "Power Automate", "SAP", "Exceptions queue". */
+  name: string;
+  /** What this component does in the flow. */
+  role: string;
+  /** Coarse kind, used to pick an icon/colour in the diagram. */
+  kind?: "source" | "process" | "store" | "output" | "decision";
+}
+
+/** A delivery phase for the proposed solution. */
+export interface SolutionPhase {
+  name: string;
+  detail: string;
+}
+
+/**
+ * The engine's *proposed solution design* — it doesn't just cost the problem,
+ * it designs the fix. Rendered as a schematic diagram plus detail in the
+ * Solution panel.
+ */
+export interface SolutionDesign {
+  /** One-line description of the proposed solution. */
+  summary?: string;
+  /** The specific problem this design addresses. */
+  problem_addressed?: string;
+  /** Ordered components in the data/process flow (left→right in the diagram). */
+  components?: SolutionComponent[];
+  /** Human-readable flow steps. */
+  data_flow?: string[];
+  /** Proposed technologies / platforms. */
+  tech_stack?: string[];
+  /** Delivery phases. */
+  phases?: SolutionPhase[];
+  /** Rough effort/complexity estimate. */
+  effort_estimate?: string;
+  /** Key delivery/technical risks. */
+  key_risks?: string[];
+  /** How success would be measured. */
+  success_metrics?: string[];
   [key: string]: unknown;
 }
 
@@ -40,6 +89,8 @@ export interface BusinessCaseDraft {
 export interface ChatEnvelope {
   chat_response: string;
   business_case_draft: BusinessCaseDraft | null;
+  /** The proposed solution design (null until the engine reaches a recommendation). */
+  solution_design: SolutionDesign | null;
   ui_mockup_prompt: string | null;
 }
 

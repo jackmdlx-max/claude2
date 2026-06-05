@@ -1,4 +1,4 @@
-import type { ChatEnvelope, ChatMessage } from "./types";
+import type { ChatEnvelope, ChatMessage, SolutionDesign } from "./types";
 
 /**
  * Demo mode lets ST-Streamline run as a fully clickable, scripted walkthrough
@@ -127,6 +127,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "I'll help you spot a repetitive manual task that's eating your week, then turn it into a costed business case for automation. " +
         "To anchor things: what's your role, and which team are you in?",
       business_case_draft: null,
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -138,6 +139,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "Thanks, that helps anchor the session. Now the bit that matters: thinking about a typical week, " +
         "what's the single most repetitive, manual task that eats your time — the kind of thing you find yourself redoing over and over?",
       business_case_draft: null,
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -154,6 +156,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "Got it — that's exactly the sort of bottleneck worth pinning down. " +
         "Before we size it up, help me understand the why: what's the purpose of that task — what's it actually for, or what does it produce?",
       business_case_draft: buildDraft(captured),
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -167,6 +170,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "That's useful context. Now, what decisions or downstream outputs hang off it — " +
         "what gets decided, reported, or actioned because of the work you put in?",
       business_case_draft: buildDraft(captured),
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -179,6 +183,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
       chat_response:
         "Makes sense. And who actually relies on that output — which team, role or stakeholder is waiting on it downstream?",
       business_case_draft: buildDraft(captured),
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -192,6 +197,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "Good — that tells me who's affected if it slips. " +
         "Which systems or tools are involved when you do it? (For example Excel, SAP, SharePoint, Power BI, Outlook…)",
       business_case_draft: buildDraft(captured),
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -205,6 +211,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "Right, that gives me the toolchain. " +
         "What does the task depend on to get going — any upstream inputs, things that have to be in place first, or blockers that hold it up?",
       business_case_draft: buildDraft(captured),
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -218,6 +225,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "Perfect — I've got the full picture now. Two quick numbers and we can size this up: " +
         "roughly how many hours a week does it cost you, and how many people on the team do the same thing?",
       business_case_draft: buildDraft(captured),
+      solution_design: null,
       ui_mockup_prompt: null,
     };
   }
@@ -240,6 +248,32 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
     complexity: "Medium",
   };
   const mockup = mockupPromptFor(systems);
+  const demoSolution: SolutionDesign = {
+    summary: `Automate "${captured.bottleneck}" with an event-driven integration that removes the manual step.`,
+    problem_addressed: captured.bottleneck,
+    components: [
+      { name: systems[0] ?? "Source data", role: "Source of the manual inputs", kind: "source" },
+      { name: "Power Automate", role: "Ingest, validate and transform on a trigger", kind: "process" },
+      { name: systems[1] ?? "System of record", role: "Validation lookups / write-back", kind: "store" },
+      { name: "Exceptions queue", role: "Routes rows that fail validation for review", kind: "decision" },
+      { name: "ST Dashboard", role: "Live, always-current delivery view", kind: "output" },
+    ],
+    data_flow: [
+      `${systems.join(" / ")} inputs arrive (or are picked up on a schedule/trigger)`,
+      "Power Automate validates and transforms them automatically",
+      "Clean data is written straight to the dashboard; bad rows go to the exceptions queue",
+      "The team reviews only exceptions instead of re-keying everything",
+    ],
+    tech_stack: ["Power Automate", "Internal API integration", ...systems.slice(0, 2)],
+    phases: [
+      { name: "Discovery & rules", detail: "Confirm the validation rules and data contracts (the real work)." },
+      { name: "Build & pilot", detail: "Build the flow, pilot on one team, tune the exceptions handling." },
+      { name: "Roll out", detail: "Extend to all affected users; add monitoring and alerting." },
+    ],
+    effort_estimate: "Medium — a few weeks; the validation logic is the bulk of the effort, not the plumbing.",
+    key_risks: ["Source data quality / template drift", "Edge cases the rules miss", "User adoption of the exceptions workflow"],
+    success_metrics: ["Manual hours eliminated", "Error rate in the downstream output", "Time-to-current for the dashboard"],
+  };
 
   if (step === 8) {
     return {
@@ -249,6 +283,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "My proposal is a Power Automate flow wired into the relevant systems via internal APIs so the data updates itself weekly. " +
         "I've put the full case in the side panel and generated a UI mockup of the data flow on the right. Does that line up with what you had in mind?",
       business_case_draft: draft,
+      solution_design: demoSolution,
       ui_mockup_prompt: mockup,
     };
   }
@@ -263,6 +298,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
         "(tweak the £/hr rate there to re-price the saving, or export it as Markdown or JSON), " +
         'and the data-flow mockup is on the right. When you\'re ready to audit another bottleneck, hit "New session".',
       business_case_draft: draft,
+      solution_design: demoSolution,
       ui_mockup_prompt: mockup,
     };
   }
@@ -273,6 +309,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
     chat_response:
       'This audit is complete — hit "New session" to run another bottleneck.',
     business_case_draft: draft,
+    solution_design: demoSolution,
     ui_mockup_prompt: mockup,
   };
 }

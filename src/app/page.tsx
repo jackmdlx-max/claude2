@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ChatPanel } from "@/components/ChatPanel";
 import { BusinessCasePanel } from "@/components/BusinessCasePanel";
 import { SolutionDesignPanel } from "@/components/SolutionDesignPanel";
 import { MockupPanel } from "@/components/MockupPanel";
 import { StageIndicator } from "@/components/StageIndicator";
 import { ConfigStatus } from "@/components/ConfigStatus";
+import { SaveIdeaButton } from "@/components/SaveIdeaButton";
 import { Logo } from "@/components/Logo";
 import type {
   BusinessCaseDraft,
@@ -25,6 +27,7 @@ export default function Home() {
   const [mockupPrompt, setMockupPrompt] = useState<string | null>(null);
   const [stage, setStage] = useState(1);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [ideaId, setIdeaId] = useState<string | null>(null);
 
   // `hydrated` gates the first render until we've checked localStorage.
   const [hydrated, setHydrated] = useState(false);
@@ -32,6 +35,29 @@ export default function Home() {
   const [sessionKey, setSessionKey] = useState(0);
 
   useEffect(() => {
+    // Revisiting a saved idea: /?idea=<id> loads it back into the session.
+    const ideaParam = new URLSearchParams(window.location.search).get("idea");
+    if (ideaParam) {
+      window.history.replaceState({}, "", "/");
+      fetch(`/api/ideas/${ideaParam}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          const it = d?.idea;
+          if (it) {
+            setMessages(it.messages ?? []);
+            setInitialMessages(it.messages ?? []);
+            setDraft(it.draft ?? null);
+            setSolutionDesign(it.solutionDesign ?? null);
+            setMockupPrompt(it.mockupPrompt ?? null);
+            setStage(it.stage ?? 1);
+            setIdeaId(it.id);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setHydrated(true));
+      return;
+    }
+
     const restored = loadSession();
     if (restored) {
       setMessages(restored.messages);
@@ -75,6 +101,7 @@ export default function Home() {
     setStage(1);
     setMessages([]);
     setInitialMessages([]);
+    setIdeaId(null);
     setSessionKey((k) => k + 1);
   }
 
@@ -105,13 +132,28 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ConfigStatus />
+            {draft && (
+              <SaveIdeaButton
+                ideaId={ideaId}
+                draft={draft}
+                solutionDesign={solutionDesign}
+                mockupPrompt={mockupPrompt}
+                messages={messages}
+                stage={stage}
+                onSaved={setIdeaId}
+                className={headerBtn}
+              />
+            )}
             {draft && (
               <button onClick={exportPack} className={headerBtn}>
                 Export pack
               </button>
             )}
+            <Link href="/portfolio" className={headerBtn}>
+              Portfolio
+            </Link>
             <button onClick={newSession} className={headerBtn}>
               New session
             </button>

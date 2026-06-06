@@ -1,4 +1,4 @@
-import type { BusinessCaseDraft } from "./types";
+import type { BusinessCaseDraft, SolutionDesign } from "./types";
 import { computeRoi, formatGBP, toNumber } from "./roi";
 
 const FIELD_ORDER: Array<[keyof BusinessCaseDraft, string]> = [

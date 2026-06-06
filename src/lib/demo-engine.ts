@@ -123,7 +123,7 @@ export function runDemoTurn(history: ChatMessage[]): ChatEnvelope {
   if (step === 0) {
     return {
       chat_response:
-        "Hey — I'm ST-Streamline, the workflow auditor for the capital business. " +
+        "Hey — I'm Capital AI Idea Generation, the workflow auditor for the capital business. " +
         "I'll help you spot a repetitive manual task that's eating your week, then turn it into a costed business case for automation. " +
         "To anchor things: what's your role, and which team are you in?",
       business_case_draft: null,

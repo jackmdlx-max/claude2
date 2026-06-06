@@ -62,7 +62,7 @@ test("forces the envelope tool with a cached system prompt and valid request", a
   assert.equal(req.max_tokens, DEFAULT_MAX_TOKENS);
   // System is now a cached text block, not a bare string.
   assert.ok(Array.isArray(req.system));
-  assert.ok(req.system[0].text.includes("ST-Streamline"));
+  assert.ok(req.system[0].text.includes("Capital AI Idea Generation"));
   assert.deepEqual(req.system[0].cache_control, { type: "ephemeral" });
   // Tool use is forced.
   assert.deepEqual(req.tool_choice, { type: "tool", name: ENVELOPE_TOOL.name });

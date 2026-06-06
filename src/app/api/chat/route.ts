@@ -6,7 +6,7 @@ import type { ChatRequest } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
+const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
 
 export async function POST(req: Request) {
   let body: ChatRequest;
@@ -37,7 +37,10 @@ export async function POST(req: Request) {
 
   try {
     const envelope = await runEngineTurn(
-      (params: MessageCreateParams) => client.messages.create(params),
+      (params: MessageCreateParams) =>
+        client.messages.create(
+          params as unknown as Anthropic.Messages.MessageCreateParamsNonStreaming,
+        ),
       MODEL,
       messages,
     );

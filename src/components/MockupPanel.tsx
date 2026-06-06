@@ -47,18 +47,16 @@ export function MockupPanel({ prompt }: { prompt: string | null }) {
 
   if (!prompt) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-400">
-        A visual UI design mockup of the proposed automation will render here at
-        the final pitch stage.
+      <div className="rounded-2xl border border-dashed border-st-teal/30 bg-white/50 p-5 text-sm text-st-slate/60">
+        A rendered UI mockup of the proposed automation will appear here at the
+        recommendation stage.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-st-blue">
-        UI Design Mockup
-      </h2>
+    <div className="st-card animate-fade-in-up p-5">
+      <h2 className="st-eyebrow mb-4">UI Design Mockup</h2>
 
       {state.loading && (
         <div className="flex h-48 items-center justify-center rounded-lg bg-slate-50 text-sm text-slate-400">

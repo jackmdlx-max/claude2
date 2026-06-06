@@ -35,7 +35,7 @@ export function extractEnvelope(text: string): ChatEnvelope {
       depth--;
       if (depth === 0) {
         const json = candidate.slice(start, i + 1);
-        return normalise(JSON.parse(json));
+        return normaliseEnvelope(JSON.parse(json));
       }
     }
   }
@@ -43,10 +43,12 @@ export function extractEnvelope(text: string): ChatEnvelope {
 }
 
 /**
- * Guarantee the three envelope fields exist with sane defaults, so downstream
- * UI never has to guard against a missing key from a slightly-off model reply.
+ * Guarantee the envelope fields exist with sane defaults, so downstream UI never
+ * has to guard against a missing key from a slightly-off model reply. Exported
+ * because the live engine now gets the envelope as a structured tool input and
+ * needs the same normalisation the text path uses.
  */
-function normalise(raw: unknown): ChatEnvelope {
+export function normaliseEnvelope(raw: unknown): ChatEnvelope {
   if (typeof raw !== "object" || raw === null) {
     throw new Error("Parsed value is not an object.");
   }
@@ -54,12 +56,18 @@ function normalise(raw: unknown): ChatEnvelope {
   if (typeof obj.chat_response !== "string") {
     throw new Error("Envelope is missing a string `chat_response`.");
   }
+  const asObject = (v: unknown) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? (v as Record<string, unknown>)
+      : null;
   return {
     chat_response: obj.chat_response,
-    business_case_draft:
-      obj.business_case_draft && typeof obj.business_case_draft === "object"
-        ? (obj.business_case_draft as ChatEnvelope["business_case_draft"])
-        : null,
+    business_case_draft: asObject(
+      obj.business_case_draft,
+    ) as ChatEnvelope["business_case_draft"],
+    solution_design: asObject(
+      obj.solution_design,
+    ) as ChatEnvelope["solution_design"],
     ui_mockup_prompt:
       typeof obj.ui_mockup_prompt === "string" ? obj.ui_mockup_prompt : null,
   };

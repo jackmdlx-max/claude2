@@ -32,7 +32,7 @@ export function ConfigStatus() {
     return (
       <div
         className="flex shrink-0 items-center gap-2 rounded-lg border border-st-sky/40 bg-st-sky/10 px-3 py-1.5 text-xs"
-        title="Scripted walkthrough — no API key needed. Set ANTHROPIC_API_KEY in your environment to switch on live AI."
+        title="Capital AI Idea Generation is running a scripted walkthrough — no API key needed. Set ANTHROPIC_API_KEY in your environment to switch on live AI."
       >
         <span className="h-2 w-2 rounded-full bg-st-sky" />
         <span className="font-medium text-st-blue">Demo mode</span>

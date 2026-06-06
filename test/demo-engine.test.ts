@@ -32,7 +32,7 @@ const FULL_ANSWERS = [
 
 test("step 0 greets with no draft or mockup (Stage 1)", () => {
   const env = runDemoTurn([]);
-  assert.match(env.chat_response, /ST-Streamline/);
+  assert.match(env.chat_response, /Capital AI Idea Generation/);
   assert.equal(env.business_case_draft, null);
   assert.equal(env.ui_mockup_prompt, null);
 });

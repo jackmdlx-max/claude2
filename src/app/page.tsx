@@ -3,25 +3,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChatPanel } from "@/components/ChatPanel";
 import { BusinessCasePanel } from "@/components/BusinessCasePanel";
+import { SolutionDesignPanel } from "@/components/SolutionDesignPanel";
 import { MockupPanel } from "@/components/MockupPanel";
 import { StageIndicator } from "@/components/StageIndicator";
 import { ConfigStatus } from "@/components/ConfigStatus";
-import type { BusinessCaseDraft, ChatEnvelope, ChatMessage } from "@/lib/types";
+import { Logo } from "@/components/Logo";
+import type {
+  BusinessCaseDraft,
+  ChatEnvelope,
+  ChatMessage,
+  SolutionDesign,
+} from "@/lib/types";
 import { clearSession, loadSession, saveSession } from "@/lib/session-store";
 import { deriveStage } from "@/lib/stage";
+import { exportPackToMarkdown } from "@/lib/business-case";
+import { download } from "@/lib/download";
 
 export default function Home() {
   const [draft, setDraft] = useState<BusinessCaseDraft | null>(null);
+  const [solutionDesign, setSolutionDesign] = useState<SolutionDesign | null>(null);
   const [mockupPrompt, setMockupPrompt] = useState<string | null>(null);
   const [stage, setStage] = useState(1);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  // `hydrated` gates the first render until we've checked localStorage, which
-  // keeps SSR and the initial client render in agreement (both show the
-  // placeholder) and prevents a fresh Stage 1 firing before a restore.
+  // `hydrated` gates the first render until we've checked localStorage.
   const [hydrated, setHydrated] = useState(false);
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
-  // Remounts ChatPanel on reset so its internal start logic runs afresh.
   const [sessionKey, setSessionKey] = useState(0);
 
   useEffect(() => {
@@ -30,33 +37,31 @@ export default function Home() {
       setMessages(restored.messages);
       setInitialMessages(restored.messages);
       setDraft(restored.draft);
+      setSolutionDesign(restored.solutionDesign);
       setMockupPrompt(restored.mockupPrompt);
       setStage(restored.stage);
     }
     setHydrated(true);
   }, []);
 
-  // Persist whenever meaningful state changes (after hydration).
   useEffect(() => {
     if (!hydrated || messages.length === 0) return;
-    saveSession({ messages, draft, mockupPrompt, stage });
-  }, [hydrated, messages, draft, mockupPrompt, stage]);
+    saveSession({ messages, draft, solutionDesign, mockupPrompt, stage });
+  }, [hydrated, messages, draft, solutionDesign, mockupPrompt, stage]);
 
-  const handleEnvelope = useCallback(
-    (env: ChatEnvelope, userTurns: number) => {
-      if (env.business_case_draft) setDraft(env.business_case_draft);
-      if (env.ui_mockup_prompt) setMockupPrompt(env.ui_mockup_prompt);
+  const handleEnvelope = useCallback((env: ChatEnvelope, userTurns: number) => {
+    if (env.business_case_draft) setDraft(env.business_case_draft);
+    if (env.solution_design) setSolutionDesign(env.solution_design);
+    if (env.ui_mockup_prompt) setMockupPrompt(env.ui_mockup_prompt);
 
-      setStage((prev) =>
-        deriveStage(prev, {
-          hasMockup: Boolean(env.ui_mockup_prompt),
-          hasDraft: Boolean(env.business_case_draft),
-          userTurns,
-        }),
-      );
-    },
-    [],
-  );
+    setStage((prev) =>
+      deriveStage(prev, {
+        hasMockup: Boolean(env.ui_mockup_prompt) || Boolean(env.solution_design),
+        hasDraft: Boolean(env.business_case_draft),
+        userTurns,
+      }),
+    );
+  }, []);
 
   const handleMessagesChange = useCallback((msgs: ChatMessage[]) => {
     setMessages(msgs);
@@ -65,6 +70,7 @@ export default function Home() {
   function newSession() {
     clearSession();
     setDraft(null);
+    setSolutionDesign(null);
     setMockupPrompt(null);
     setStage(1);
     setMessages([]);
@@ -72,24 +78,52 @@ export default function Home() {
     setSessionKey((k) => k + 1);
   }
 
+  function exportPack() {
+    if (!draft) return;
+    download(
+      "capital-ai-pack.md",
+      exportPackToMarkdown(draft, solutionDesign),
+      "text/markdown",
+    );
+  }
+
+  const headerBtn =
+    "rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/20 st-focus";
+
   return (
-    // On small screens the whole page scrolls vertically (chat on top, panels
-    // below). At `lg:` we switch to a full-height, fixed side-by-side split.
-    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-5 lg:h-screen">
-      <div className="flex items-center justify-between gap-4">
-        <StageIndicator stage={stage} />
-        <div className="flex shrink-0 items-center gap-2">
-          <ConfigStatus />
-          <button
-            onClick={newSession}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-st-blue transition hover:bg-slate-50"
-          >
-            New session
-          </button>
+    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-3 sm:p-5">
+      <header className="overflow-hidden rounded-2xl bg-st-hero shadow-card-lg">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
+          <div className="flex items-center gap-3">
+            <Logo className="h-10 w-10 shrink-0" />
+            <div>
+              <h1 className="st-wordmark font-display text-lg font-semibold leading-tight sm:text-xl">
+                Capital AI Idea Generation
+              </h1>
+              <p className="text-xs text-white/55">
+                Severn Trent capital · idea → costed business case → solution design
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <ConfigStatus />
+            {draft && (
+              <button onClick={exportPack} className={headerBtn}>
+                Export pack
+              </button>
+            )}
+            <button onClick={newSession} className={headerBtn}>
+              New session
+            </button>
+          </div>
         </div>
-      </div>
+        <div className="border-t border-white/10 px-4 py-3 sm:px-5">
+          <StageIndicator stage={stage} />
+        </div>
+      </header>
+
       <div className="flex min-h-0 flex-1 flex-col gap-5 lg:flex-row">
-        <section className="h-[60vh] lg:h-auto lg:w-[45%] lg:min-w-[360px]">
+        <section className="h-[68vh] lg:h-auto lg:w-[44%] lg:min-w-[380px]">
           {hydrated && (
             <ChatPanel
               key={sessionKey}
@@ -99,8 +133,9 @@ export default function Home() {
             />
           )}
         </section>
-        <aside className="flex flex-col gap-5 lg:flex-1 lg:overflow-y-auto">
+        <aside className="st-scroll flex flex-1 flex-col gap-5 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <BusinessCasePanel draft={draft} />
+          <SolutionDesignPanel solution={solutionDesign} />
           <MockupPanel prompt={mockupPrompt} />
         </aside>
       </div>

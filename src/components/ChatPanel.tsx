@@ -4,16 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatEnvelope, ChatMessage } from "@/lib/types";
 import { transcriptToMarkdown } from "@/lib/business-case";
 import { download } from "@/lib/download";
+import { Logo } from "./Logo";
 
 interface ChatPanelProps {
-  /** Called after every engine reply, with the running count of user turns. */
   onEnvelope: (envelope: ChatEnvelope, userTurns: number) => void;
-  /** Restored conversation (e.g. from localStorage). When non-empty, the panel
-   *  resumes instead of kicking off a fresh Stage 1 greeting. */
   initialMessages?: ChatMessage[];
-  /** Notified whenever the message list changes, so the parent can persist it. */
   onMessagesChange?: (messages: ChatMessage[]) => void;
 }
+
+const STARTERS = [
+  "I manually compile AMP9 design envelopes every week",
+  "I re-key contractor returns into our delivery dashboard",
+  "I chase consents and approvals by email",
+];
 
 async function callEngine(messages: ChatMessage[]): Promise<ChatEnvelope> {
   const res = await fetch("/api/chat", {
@@ -39,11 +42,6 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  /**
-   * Send a conversation (already ending in the turn to answer) to the engine
-   * and append the assistant reply. On failure the history is left intact so
-   * the user can retry without retyping.
-   */
   const runEngine = useCallback(
     async (history: ChatMessage[]) => {
       setError(null);
@@ -62,8 +60,6 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
     [onEnvelope],
   );
 
-  // Kick off Stage 1 only for a fresh session. A restored conversation resumes
-  // where it left off rather than re-greeting.
   useEffect(() => {
     if (started.current) return;
     started.current = true;
@@ -71,7 +67,6 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
     void runEngine([]);
   }, [runEngine, initialMessages]);
 
-  // Mirror the message list up to the parent for persistence.
   useEffect(() => {
     onMessagesChange?.(messages);
   }, [messages, onMessagesChange]);
@@ -80,17 +75,18 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
 
-  function send() {
-    const text = input.trim();
-    if (!text || busy) return;
-    const next: ChatMessage[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setInput("");
-    void runEngine(next);
-  }
+  const sendText = useCallback(
+    (text: string) => {
+      const t = text.trim();
+      if (!t || busy) return;
+      const next: ChatMessage[] = [...messages, { role: "user", content: t }];
+      setMessages(next);
+      setInput("");
+      void runEngine(next);
+    },
+    [messages, busy, runEngine],
+  );
 
-  // Retry resends the current history (which ends in the unanswered turn, or is
-  // empty for a failed greeting).
   function retry() {
     if (busy) return;
     void runEngine(messages);
@@ -98,18 +94,24 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
 
   const lastIsUser = messages.length > 0 && messages[messages.length - 1].role === "user";
   const canRetry = !busy && (messages.length === 0 || lastIsUser);
+  const showStarters = !busy && !error && countUserTurns(messages) === 0;
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <div>
-          <h1 className="text-lg font-semibold text-st-navy">ST-Streamline</h1>
-          <p className="text-xs text-slate-400">Workflow bottleneck auditor — capital business</p>
+    <div className="st-card flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-st-navy">
+            <Logo className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-st-navy">Discovery chat</h2>
+            <p className="text-[11px] text-slate-400">Capital AI is interviewing you</p>
+          </div>
         </div>
         {messages.length > 0 && (
           <button
             onClick={() => download("transcript.md", transcriptToMarkdown(messages), "text/markdown")}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-st-blue transition hover:bg-slate-50"
+            className="st-focus rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-st-teal-600 transition hover:bg-slate-50"
           >
             Export chat
           </button>
@@ -122,15 +124,18 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
         aria-live="polite"
         aria-relevant="additions"
         aria-label="Discovery conversation"
-        className="flex-1 space-y-4 overflow-y-auto px-5 py-5"
+        className="st-scroll flex-1 space-y-3.5 overflow-y-auto px-4 py-5 sm:px-5"
       >
         {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+          <div
+            key={i}
+            className={`animate-fade-in-up flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+          >
             <div
               className={
                 m.role === "user"
-                  ? "max-w-[80%] rounded-2xl rounded-br-sm bg-st-blue px-4 py-2.5 text-sm text-white"
-                  : "max-w-[80%] rounded-2xl rounded-bl-sm bg-slate-100 px-4 py-2.5 text-sm text-st-navy"
+                  ? "max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-gradient-to-br from-st-teal to-st-teal-600 px-4 py-2.5 text-sm text-white shadow-sm"
+                  : "max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-slate-100 bg-slate-50 px-4 py-2.5 text-sm text-st-navy"
               }
             >
               {m.content}
@@ -139,15 +144,17 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
         ))}
         {busy && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-slate-100 px-4 py-2.5 text-sm text-slate-400">
-              typing…
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-slate-100 bg-slate-50 px-4 py-3">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-st-teal [animation-delay:-0.2s]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-st-teal [animation-delay:-0.1s]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-st-teal" />
             </div>
           </div>
         )}
         {error && (
           <div
             role="alert"
-            className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600"
+            className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600"
           >
             <span>{error}</span>
             {canRetry && (
@@ -163,10 +170,23 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
       </div>
 
       <div className="border-t border-slate-100 p-3">
+        {showStarters && (
+          <div className="mb-2.5 flex flex-wrap gap-1.5">
+            {STARTERS.map((s) => (
+              <button
+                key={s}
+                onClick={() => sendText(s)}
+                className="st-focus rounded-full border border-st-teal/25 bg-st-teal/5 px-3 py-1.5 text-left text-xs font-medium text-st-teal-600 transition hover:bg-st-teal/10"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
-            className="min-h-[44px] flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-st-navy outline-none focus:border-st-blue"
+            className="st-focus min-h-[46px] flex-1 resize-none rounded-xl border border-slate-200 px-3.5 py-3 text-sm text-st-navy"
             placeholder="Type your reply…"
             aria-label="Your reply"
             rows={1}
@@ -177,15 +197,15 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                send();
+                sendText(input);
               }
             }}
             disabled={busy}
           />
           <button
-            onClick={send}
+            onClick={() => sendText(input)}
             disabled={busy || !input.trim()}
-            className="rounded-lg bg-st-blue px-4 py-2.5 text-sm font-medium text-white transition hover:bg-st-navy disabled:cursor-not-allowed disabled:opacity-40"
+            className="st-focus rounded-xl bg-st-teal px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-st-teal-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>

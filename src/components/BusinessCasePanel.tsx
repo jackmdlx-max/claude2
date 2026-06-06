@@ -60,7 +60,7 @@ export function BusinessCasePanel({ draft }: { draft: BusinessCaseDraft | null }
 
   if (!draft || Object.keys(draft).length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-400">
+      <div className="rounded-2xl border border-dashed border-st-teal/30 bg-white/50 p-5 text-sm text-st-slate/60">
         The business case will populate here once we start pinning down the
         specifics of your bottleneck.
       </div>
@@ -88,11 +88,9 @@ export function BusinessCasePanel({ draft }: { draft: BusinessCaseDraft | null }
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="st-card animate-fade-in-up p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-st-blue">
-          Business Case Draft
-        </h2>
+        <h2 className="st-eyebrow">Business Case Draft</h2>
         {headline && (
           <span className="rounded-full bg-st-gold/15 px-3 py-1 text-xs font-semibold text-st-gold">
             {headline}

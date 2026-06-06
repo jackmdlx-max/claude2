@@ -1,8 +1,8 @@
-const STAGES = ["Context", "Discovery", "Validation", "Pitch"] as const;
+const STAGES = ["Context", "Discovery", "Validation", "Solution"] as const;
 
 /**
- * Horizontal 4-step progress bar mirroring the engine's conversational stages.
- * `stage` is 1-based (1 = Context … 4 = Pitch).
+ * Horizontal 4-step stepper mirroring the engine's conversational stages,
+ * styled for the dark hero header. `stage` is 1-based (1 = Context … 4).
  */
 export function StageIndicator({ stage }: { stage: number }) {
   return (
@@ -18,25 +18,30 @@ export function StageIndicator({ stage }: { stage: number }) {
                 className={[
                   "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition",
                   done
-                    ? "bg-st-blue text-white"
+                    ? "bg-st-teal text-white"
                     : active
-                      ? "bg-st-gold text-white"
-                      : "bg-slate-200 text-slate-400",
+                      ? "bg-st-gold text-st-ink animate-pulse-glow"
+                      : "bg-white/10 text-white/45 ring-1 ring-inset ring-white/15",
                 ].join(" ")}
               >
                 {done ? "✓" : step}
               </span>
               <span
                 className={[
-                  "text-xs font-medium transition",
-                  active ? "text-st-navy" : done ? "text-st-blue" : "text-slate-400",
+                  "hidden text-xs font-medium transition sm:inline",
+                  active ? "text-white" : done ? "text-st-teal-300" : "text-white/45",
                 ].join(" ")}
               >
                 {label}
               </span>
             </div>
             {step < STAGES.length && (
-              <span className={["h-px flex-1", done ? "bg-st-blue" : "bg-slate-200"].join(" ")} />
+              <span
+                className={[
+                  "h-px flex-1 transition",
+                  done ? "bg-st-teal/70" : "bg-white/12",
+                ].join(" ")}
+              />
             )}
           </li>
         );

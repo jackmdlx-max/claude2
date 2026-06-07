@@ -19,6 +19,8 @@ export interface StoredIdea {
   title: string;
   team?: string | null;
   status: IdeaStatus;
+  /** Owner ids who have upvoted (deduped); length is the support count. */
+  votes?: string[];
   createdAt: number;
   updatedAt: number;
   draft: BusinessCaseDraft | null;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { summarisePortfolio, type StoredIdea } from "@/lib/ideas";
+import { summarisePortfolio, type IdeaStatus, type StoredIdea } from "@/lib/ideas";
 import { formatGBP } from "@/lib/roi";
 import { getOwnerId } from "@/lib/owner";
 
@@ -13,6 +13,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   approved: { label: "Approved", cls: "bg-emerald-50 text-emerald-600 ring-emerald-200" },
   parked: { label: "Parked", cls: "bg-slate-100 text-slate-500 ring-slate-200" },
 };
+const STATUS_OPTS: IdeaStatus[] = ["captured", "in_review", "approved", "parked"];
 
 function timeAgo(ts: number): string {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
@@ -39,7 +40,7 @@ export default function PipelinePage() {
   const [query, setQuery] = useState("");
   const [mineOnly, setMineOnly] = useState(false);
   const [team, setTeam] = useState("");
-  const [sort, setSort] = useState<"newest" | "value">("newest");
+  const [sort, setSort] = useState<"newest" | "value" | "support">("newest");
 
   useEffect(() => {
     fetch("/api/portfolio")
@@ -53,6 +54,49 @@ export default function PipelinePage() {
   }, []);
 
   const owner = typeof window !== "undefined" ? getOwnerId() : "";
+
+  const patch = useCallback((id: string, fn: (i: StoredIdea) => StoredIdea) => {
+    setIdeas((prev) => prev.map((i) => (i.id === id ? fn(i) : i)));
+  }, []);
+
+  const toggleVote = useCallback(
+    (id: string) => {
+      patch(id, (i) => {
+        const votes = i.votes ?? [];
+        return {
+          ...i,
+          votes: votes.includes(owner) ? votes.filter((v) => v !== owner) : [...votes, owner],
+        };
+      });
+      fetch(`/api/ideas/${id}/vote`, { method: "POST", headers: { "x-owner-id": owner } }).catch(
+        () => {},
+      );
+    },
+    [owner, patch],
+  );
+
+  const changeStatus = useCallback(
+    (id: string, status: IdeaStatus) => {
+      patch(id, (i) => ({ ...i, status }));
+      fetch(`/api/ideas/${id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-owner-id": owner },
+        body: JSON.stringify({ status }),
+      }).catch(() => {});
+    },
+    [owner, patch],
+  );
+
+  const remove = useCallback(
+    (id: string) => {
+      setIdeas((prev) => prev.filter((i) => i.id !== id));
+      fetch(`/api/ideas/${id}`, { method: "DELETE", headers: { "x-owner-id": owner } }).catch(
+        () => {},
+      );
+    },
+    [owner],
+  );
+
   const teams = useMemo(
     () => Array.from(new Set(ideas.map((i) => (i.team || "Unassigned").trim()))).sort(),
     [ideas],
@@ -73,13 +117,17 @@ export default function PipelinePage() {
       return true;
     });
     return list.sort((a, b) =>
-      sort === "value" ? b.roi.yearlyCostGBP - a.roi.yearlyCostGBP : b.updatedAt - a.updatedAt,
+      sort === "value"
+        ? b.roi.yearlyCostGBP - a.roi.yearlyCostGBP
+        : sort === "support"
+          ? (b.votes?.length ?? 0) - (a.votes?.length ?? 0)
+          : b.updatedAt - a.updatedAt,
     );
   }, [ideas, query, mineOnly, team, sort, owner]);
 
   const summary = useMemo(() => summarisePortfolio(filtered), [filtered]);
-
-  const inputCls = "st-focus rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white";
+  const inputCls =
+    "st-focus rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-3 sm:p-5">
@@ -120,15 +168,12 @@ export default function PipelinePage() {
           </select>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as "newest" | "value")}
+            onChange={(e) => setSort(e.target.value as "newest" | "value" | "support")}
             className={inputCls}
           >
-            <option value="newest" className="text-st-navy">
-              Newest
-            </option>
-            <option value="value" className="text-st-navy">
-              Top value
-            </option>
+            <option value="newest" className="text-st-navy">Newest</option>
+            <option value="value" className="text-st-navy">Top value</option>
+            <option value="support" className="text-st-navy">Most supported</option>
           </select>
           <label className="flex items-center gap-1.5 text-xs text-white/80">
             <input
@@ -149,7 +194,6 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Glance stats */}
       {!loading && !failed && ideas.length > 0 && (
         <section className="grid grid-cols-3 gap-3">
           <Stat label="Ideas in view" value={String(summary.count)} />
@@ -167,10 +211,7 @@ export default function PipelinePage() {
           {ideas.length === 0 ? (
             <>
               No ideas in the pipeline yet. Be the first —{" "}
-              <Link href="/" className="font-medium text-st-teal-600">
-                submit one
-              </Link>
-              .
+              <Link href="/" className="font-medium text-st-teal-600">submit one</Link>.
             </>
           ) : (
             "No ideas match your filters."
@@ -182,13 +223,30 @@ export default function PipelinePage() {
             const st = STATUS[i.status] ?? STATUS.captured;
             const systems = (i.draft?.systems_involved ?? []).slice(0, 4);
             const who = i.submitterName || "Anonymous";
+            const voteCount = i.votes?.length ?? 0;
+            const voted = (i.votes ?? []).includes(owner);
+            const mine = i.ownerId === owner;
             return (
               <article key={i.id} className="st-card flex flex-col p-4">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${st.cls}`}
-                  >
-                    {st.label}
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${st.cls}`}
+                    >
+                      {st.label}
+                    </span>
+                    <select
+                      value={i.status}
+                      onChange={(e) => changeStatus(i.id, e.target.value as IdeaStatus)}
+                      aria-label="Change status"
+                      className="st-focus rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500"
+                    >
+                      {STATUS_OPTS.map((s) => (
+                        <option key={s} value={s}>
+                          {STATUS[s].label}
+                        </option>
+                      ))}
+                    </select>
                   </span>
                   <span className="text-[11px] text-slate-400">{timeAgo(i.updatedAt)}</span>
                 </div>
@@ -204,7 +262,7 @@ export default function PipelinePage() {
                   <span className="text-xs text-slate-500">
                     {who}
                     {i.team ? ` · ${i.team}` : ""}
-                    {i.ownerId === owner ? " · you" : ""}
+                    {mine ? " · you" : ""}
                   </span>
                 </div>
 
@@ -227,25 +285,45 @@ export default function PipelinePage() {
                   </div>
                 )}
 
-                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
-                  <div className="text-xs text-slate-400">
-                    {i.roi.yearlyCostGBP > 0 ? (
-                      <>
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleVote(i.id)}
+                      aria-pressed={voted}
+                      className={`st-focus flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition ${
+                        voted
+                          ? "bg-st-teal/15 text-st-teal-600 ring-st-teal/30"
+                          : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      ▲ {voteCount}
+                    </button>
+                    <span className="text-xs text-slate-400">
+                      {i.roi.yearlyCostGBP > 0 ? (
                         <span className="font-semibold text-st-teal-600">
                           {formatGBP(i.roi.yearlyCostGBP)}/yr
-                        </span>{" "}
-                        · {i.roi.yearlyHours.toLocaleString()} hrs
-                      </>
-                    ) : (
-                      "Not yet quantified"
-                    )}
+                        </span>
+                      ) : (
+                        "Not quantified"
+                      )}
+                    </span>
                   </div>
-                  <Link
-                    href={`/?idea=${i.id}`}
-                    className="text-xs font-semibold text-st-teal-600 hover:underline"
-                  >
-                    Open →
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    {mine && (
+                      <button
+                        onClick={() => remove(i.id)}
+                        className="st-focus text-xs font-medium text-slate-400 hover:text-red-500"
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <Link
+                      href={`/?idea=${i.id}`}
+                      className="text-xs font-semibold text-st-teal-600 hover:underline"
+                    >
+                      Open →
+                    </Link>
+                  </div>
                 </div>
               </article>
             );

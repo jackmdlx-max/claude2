@@ -26,6 +26,7 @@ export async function GET(req: Request) {
 interface IdeaPayload {
   id?: string;
   title?: string;
+  submitterName?: string;
   team?: string;
   status?: IdeaStatus;
   draft?: BusinessCaseDraft | null;
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
   const idea: StoredIdea = {
     id: body.id || randomUUID(),
     ownerId,
+    submitterName: body.submitterName?.trim() || null,
     title,
     team: body.team?.trim() || null,
     status: body.status ?? "captured",

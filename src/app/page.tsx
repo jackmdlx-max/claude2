@@ -151,8 +151,8 @@ export default function Home() {
                 Export pack
               </button>
             )}
-            <Link href="/portfolio" className={headerBtn}>
-              Portfolio
+            <Link href="/pipeline" className={headerBtn}>
+              Pipeline
             </Link>
             <button onClick={newSession} className={headerBtn}>
               New session

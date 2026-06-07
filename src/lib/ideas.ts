@@ -10,10 +10,12 @@ export interface IdeaRoi {
   yearlyCostGBP: number;
 }
 
-/** A captured idea, persisted to the portfolio. */
+/** A captured idea, persisted to the pipeline. */
 export interface StoredIdea {
   id: string;
   ownerId: string;
+  /** Who submitted it (free-text name, captured on save). */
+  submitterName?: string | null;
   title: string;
   team?: string | null;
   status: IdeaStatus;

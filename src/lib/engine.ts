@@ -86,6 +86,22 @@ export const ENVELOPE_TOOL = {
           success_metrics: { type: "array", items: { type: "string" } },
         },
       },
+      triage: {
+        type: "object",
+        description:
+          "A coarse feasibility read, set once you recommend. recommendation ∈ quick_win|needs_scoping|strategic|not_viable; benefit/effort/data_readiness/confidence ∈ low|medium|high; rationale is one short sentence.",
+        properties: {
+          recommendation: {
+            type: "string",
+            enum: ["quick_win", "needs_scoping", "strategic", "not_viable"],
+          },
+          benefit: { type: "string", enum: ["low", "medium", "high"] },
+          effort: { type: "string", enum: ["low", "medium", "high"] },
+          data_readiness: { type: "string", enum: ["low", "medium", "high"] },
+          confidence: { type: "string", enum: ["low", "medium", "high"] },
+          rationale: { type: "string" },
+        },
+      },
       ui_mockup_prompt: {
         type: "string",
         description:

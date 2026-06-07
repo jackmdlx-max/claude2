@@ -1,4 +1,4 @@
-import type { BusinessCaseDraft, ChatMessage, SolutionDesign } from "./types";
+import type { BusinessCaseDraft, ChatMessage, SolutionDesign, Triage } from "./types";
 import { computeRoi, DEFAULT_LOADED_HOURLY_RATE_GBP, toNumber } from "./roi";
 
 export type IdeaStatus = "captured" | "in_review" | "approved" | "parked";
@@ -25,6 +25,7 @@ export interface StoredIdea {
   updatedAt: number;
   draft: BusinessCaseDraft | null;
   solutionDesign: SolutionDesign | null;
+  triage?: Triage | null;
   mockupPrompt: string | null;
   messages: ChatMessage[];
   stage: number;

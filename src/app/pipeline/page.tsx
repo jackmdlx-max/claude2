@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { summarisePortfolio, type IdeaStatus, type StoredIdea } from "@/lib/ideas";
 import { formatGBP } from "@/lib/roi";
 import { getOwnerId } from "@/lib/owner";
+import { TriageBadge } from "@/components/TriageBadge";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   captured: { label: "Captured", cls: "bg-st-teal/10 text-st-teal-600 ring-st-teal/25" },
@@ -248,7 +249,10 @@ export default function PipelinePage() {
                       ))}
                     </select>
                   </span>
-                  <span className="text-[11px] text-slate-400">{timeAgo(i.updatedAt)}</span>
+                  <span className="flex items-center gap-1.5">
+                    <TriageBadge triage={i.triage} />
+                    <span className="text-[11px] text-slate-400">{timeAgo(i.updatedAt)}</span>
+                  </span>
                 </div>
 
                 <h2 className="font-display text-base font-semibold leading-snug text-st-navy">

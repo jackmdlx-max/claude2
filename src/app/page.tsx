@@ -15,6 +15,7 @@ import type {
   ChatEnvelope,
   ChatMessage,
   SolutionDesign,
+  Triage,
 } from "@/lib/types";
 import { clearSession, loadSession, saveSession } from "@/lib/session-store";
 import { deriveStage } from "@/lib/stage";
@@ -24,6 +25,7 @@ import { download } from "@/lib/download";
 export default function Home() {
   const [draft, setDraft] = useState<BusinessCaseDraft | null>(null);
   const [solutionDesign, setSolutionDesign] = useState<SolutionDesign | null>(null);
+  const [triage, setTriage] = useState<Triage | null>(null);
   const [mockupPrompt, setMockupPrompt] = useState<string | null>(null);
   const [stage, setStage] = useState(1);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -48,6 +50,7 @@ export default function Home() {
             setInitialMessages(it.messages ?? []);
             setDraft(it.draft ?? null);
             setSolutionDesign(it.solutionDesign ?? null);
+            setTriage(it.triage ?? null);
             setMockupPrompt(it.mockupPrompt ?? null);
             setStage(it.stage ?? 1);
             setIdeaId(it.id);
@@ -64,6 +67,7 @@ export default function Home() {
       setInitialMessages(restored.messages);
       setDraft(restored.draft);
       setSolutionDesign(restored.solutionDesign);
+      setTriage(restored.triage);
       setMockupPrompt(restored.mockupPrompt);
       setStage(restored.stage);
     }
@@ -72,12 +76,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated || messages.length === 0) return;
-    saveSession({ messages, draft, solutionDesign, mockupPrompt, stage });
-  }, [hydrated, messages, draft, solutionDesign, mockupPrompt, stage]);
+    saveSession({ messages, draft, solutionDesign, triage, mockupPrompt, stage });
+  }, [hydrated, messages, draft, solutionDesign, triage, mockupPrompt, stage]);
 
   const handleEnvelope = useCallback((env: ChatEnvelope, userTurns: number) => {
     if (env.business_case_draft) setDraft(env.business_case_draft);
     if (env.solution_design) setSolutionDesign(env.solution_design);
+    if (env.triage) setTriage(env.triage);
     if (env.ui_mockup_prompt) setMockupPrompt(env.ui_mockup_prompt);
 
     setStage((prev) =>
@@ -97,6 +102,7 @@ export default function Home() {
     clearSession();
     setDraft(null);
     setSolutionDesign(null);
+    setTriage(null);
     setMockupPrompt(null);
     setStage(1);
     setMessages([]);
@@ -139,6 +145,7 @@ export default function Home() {
                 ideaId={ideaId}
                 draft={draft}
                 solutionDesign={solutionDesign}
+                triage={triage}
                 mockupPrompt={mockupPrompt}
                 messages={messages}
                 stage={stage}
@@ -177,7 +184,7 @@ export default function Home() {
         </section>
         <aside className="st-scroll flex flex-1 flex-col gap-5 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <BusinessCasePanel draft={draft} />
-          <SolutionDesignPanel solution={solutionDesign} />
+          <SolutionDesignPanel solution={solutionDesign} triage={triage} />
           <MockupPanel prompt={mockupPrompt} />
         </aside>
       </div>

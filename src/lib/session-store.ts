@@ -1,10 +1,11 @@
-import type { BusinessCaseDraft, ChatMessage, SolutionDesign } from "./types";
+import type { BusinessCaseDraft, ChatMessage, SolutionDesign, Triage } from "./types";
 
 /** Everything we persist so a refresh doesn't lose the discovery session. */
 export interface SessionState {
   messages: ChatMessage[];
   draft: BusinessCaseDraft | null;
   solutionDesign: SolutionDesign | null;
+  triage: Triage | null;
   mockupPrompt: string | null;
   stage: number;
 }
@@ -45,6 +46,7 @@ export function parseSession(raw: string | null): SessionState | null {
       o.solutionDesign && typeof o.solutionDesign === "object"
         ? (o.solutionDesign as SolutionDesign)
         : null,
+    triage: o.triage && typeof o.triage === "object" ? (o.triage as Triage) : null,
     mockupPrompt: typeof o.mockupPrompt === "string" ? o.mockupPrompt : null,
     stage: typeof o.stage === "number" && o.stage >= 1 ? o.stage : 1,
   };

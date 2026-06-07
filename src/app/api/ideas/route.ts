@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { listIdeas, upsertIdea, isPersistent } from "@/lib/store";
 import { roiForDraft, type IdeaStatus, type StoredIdea } from "@/lib/ideas";
-import type { BusinessCaseDraft, ChatMessage, SolutionDesign } from "@/lib/types";
+import type { BusinessCaseDraft, ChatMessage, SolutionDesign, Triage } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +31,7 @@ interface IdeaPayload {
   status?: IdeaStatus;
   draft?: BusinessCaseDraft | null;
   solutionDesign?: SolutionDesign | null;
+  triage?: Triage | null;
   mockupPrompt?: string | null;
   messages?: ChatMessage[];
   stage?: number;
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
     updatedAt: now,
     draft,
     solutionDesign: body.solutionDesign ?? null,
+    triage: body.triage ?? null,
     mockupPrompt: body.mockupPrompt ?? null,
     messages: Array.isArray(body.messages) ? body.messages : [],
     stage: typeof body.stage === "number" ? body.stage : 1,

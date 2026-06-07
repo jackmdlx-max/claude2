@@ -1,21 +1,49 @@
 import type { StoredIdea } from "./ideas";
 
 /**
- * Idea storage. Durable + shared via Vercel Postgres when `POSTGRES_URL` is
- * configured; otherwise a per-instance in-memory fallback so the app still runs
- * in demo/preview (non-durable — connect a database to persist for real).
+ * Idea storage. Durable + shared via Vercel Postgres when a Postgres connection
+ * string is configured; otherwise a per-instance in-memory fallback so the app
+ * still runs in demo/preview (non-durable — connect a database to persist).
+ *
+ * Vercel storage integrations sometimes prefix the env vars (e.g.
+ * `capitalbusiness_POSTGRES_URL`), so we resolve the connection string from any
+ * matching key rather than relying on the bare `POSTGRES_URL` name.
  */
 
+function connectionString(): string | undefined {
+  const env = process.env;
+  if (env.POSTGRES_URL) return env.POSTGRES_URL;
+  // Pooled URL under any prefix, e.g. <prefix>_POSTGRES_URL (skip direct/no-ssl).
+  const pooled = Object.keys(env).find(
+    (k) => /POSTGRES_URL$/.test(k) && !/NON_POOLING|NO_SSL/.test(k) && env[k],
+  );
+  if (pooled) return env[pooled];
+  if (env.POSTGRES_PRISMA_URL) return env.POSTGRES_PRISMA_URL;
+  const prisma = Object.keys(env).find((k) => /POSTGRES_PRISMA_URL$/.test(k) && env[k]);
+  if (prisma) return env[prisma];
+  return undefined;
+}
+
 export function isPersistent(): boolean {
-  return Boolean(process.env.POSTGRES_URL);
+  return Boolean(connectionString());
 }
 
 // In-memory fallback (resets on cold start; not shared across instances).
 const mem = new Map<string, StoredIdea>();
 
-async function getSql() {
-  const { sql } = await import("@vercel/postgres");
-  return sql;
+type SqlTag = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<{ rows: Array<Record<string, unknown>> }>;
+
+let cachedSql: SqlTag | null = null;
+async function getSql(): Promise<SqlTag> {
+  if (!cachedSql) {
+    const { createPool } = await import("@vercel/postgres");
+    const pool = createPool({ connectionString: connectionString() });
+    cachedSql = pool.sql as unknown as SqlTag;
+  }
+  return cachedSql;
 }
 
 let schemaReady = false;

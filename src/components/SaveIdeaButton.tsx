@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { BusinessCaseDraft, ChatMessage, SolutionDesign } from "@/lib/types";
+import type { BusinessCaseDraft, ChatMessage, SolutionDesign, Triage } from "@/lib/types";
 import { getOwnerId } from "@/lib/owner";
 
 interface Props {
   ideaId: string | null;
   draft: BusinessCaseDraft | null;
   solutionDesign: SolutionDesign | null;
+  triage: Triage | null;
   mockupPrompt: string | null;
   messages: ChatMessage[];
   stage: number;
@@ -27,6 +28,7 @@ export function SaveIdeaButton({
   ideaId,
   draft,
   solutionDesign,
+  triage,
   mockupPrompt,
   messages,
   stage,
@@ -63,6 +65,7 @@ export function SaveIdeaButton({
           team,
           draft,
           solutionDesign,
+          triage,
           mockupPrompt,
           messages,
           stage,

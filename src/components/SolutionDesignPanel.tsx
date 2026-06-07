@@ -1,7 +1,8 @@
 "use client";
 
-import type { SolutionDesign } from "@/lib/types";
+import type { SolutionDesign, Triage } from "@/lib/types";
 import { SolutionDiagram } from "./SolutionDiagram";
+import { TriageScorecard } from "./TriageBadge";
 
 function Chips({ items, tone = "teal" }: { items: string[]; tone?: "teal" | "amber" }) {
   const cls =
@@ -33,7 +34,13 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-export function SolutionDesignPanel({ solution }: { solution: SolutionDesign | null }) {
+export function SolutionDesignPanel({
+  solution,
+  triage,
+}: {
+  solution: SolutionDesign | null;
+  triage?: Triage | null;
+}) {
   if (!solution || Object.keys(solution).length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-st-teal/30 bg-white/50 p-5 text-sm text-st-slate/60">
@@ -52,6 +59,8 @@ export function SolutionDesignPanel({ solution }: { solution: SolutionDesign | n
           Auto-designed
         </span>
       </div>
+
+      <TriageScorecard triage={triage ?? null} />
 
       {solution.summary && (
         <p className="mb-4 text-sm leading-relaxed text-st-navy">{solution.summary}</p>

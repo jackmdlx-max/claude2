@@ -85,12 +85,25 @@ export interface SolutionDesign {
   [key: string]: unknown;
 }
 
+/** A coarse feasibility/triage read on the idea, set at the recommendation. */
+export interface Triage {
+  recommendation?: "quick_win" | "needs_scoping" | "strategic" | "not_viable";
+  benefit?: "low" | "medium" | "high";
+  effort?: "low" | "medium" | "high";
+  data_readiness?: "low" | "medium" | "high";
+  confidence?: "low" | "medium" | "high";
+  rationale?: string;
+  [key: string]: unknown;
+}
+
 /** The exact JSON envelope the engine must return on every turn. */
 export interface ChatEnvelope {
   chat_response: string;
   business_case_draft: BusinessCaseDraft | null;
   /** The proposed solution design (null until the engine reaches a recommendation). */
   solution_design: SolutionDesign | null;
+  /** Feasibility triage (null until the engine reaches a recommendation). */
+  triage: Triage | null;
   ui_mockup_prompt: string | null;
 }
 

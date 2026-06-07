@@ -68,6 +68,7 @@ export function normaliseEnvelope(raw: unknown): ChatEnvelope {
     solution_design: asObject(
       obj.solution_design,
     ) as ChatEnvelope["solution_design"],
+    triage: asObject(obj.triage) as ChatEnvelope["triage"],
     ui_mockup_prompt:
       typeof obj.ui_mockup_prompt === "string" ? obj.ui_mockup_prompt : null,
   };

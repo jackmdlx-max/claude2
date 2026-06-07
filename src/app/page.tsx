@@ -115,7 +115,7 @@ export default function Home() {
     if (!draft) return;
     download(
       "capital-ai-pack.md",
-      exportPackToMarkdown(draft, solutionDesign),
+      exportPackToMarkdown(draft, solutionDesign, { triage }),
       "text/markdown",
     );
   }

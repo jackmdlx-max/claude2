@@ -2,11 +2,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { runEngineTurn, type MessageCreateParams } from "@/lib/engine";
 import { isDemoMode, runDemoTurn } from "@/lib/demo-engine";
+import { rateLimit, clientKey } from "@/lib/rate-limit";
 import type { ChatRequest } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+// Guard the (paid) live endpoint against runaway cost/abuse.
+const RATE_LIMIT = Number(process.env.CHAT_RATE_LIMIT ?? 20);
+const RATE_WINDOW_MS = 60_000;
 
 export async function POST(req: Request) {
   let body: ChatRequest;
@@ -23,6 +27,14 @@ export async function POST(req: Request) {
   if (isDemoMode()) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     return NextResponse.json(runDemoTurn(messages));
+  }
+
+  const limit = rateLimit(clientKey(req), RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "You're going a bit fast — give it a few seconds and try again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+    );
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

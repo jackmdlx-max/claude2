@@ -1,4 +1,4 @@
-import type { BusinessCaseDraft, SolutionDesign } from "./types";
+import type { BusinessCaseDraft, SolutionDesign, Triage } from "./types";
 import { computeRoi, formatGBP, toNumber } from "./roi";
 
 const FIELD_ORDER: Array<[keyof BusinessCaseDraft, string]> = [
@@ -126,9 +126,21 @@ export function solutionDesignToMarkdown(sd: SolutionDesign): string {
 export function exportPackToMarkdown(
   draft: BusinessCaseDraft,
   solution: SolutionDesign | null,
-  opts: { hourlyRate?: number; generatedAt?: Date } = {},
+  opts: { hourlyRate?: number; generatedAt?: Date; triage?: Triage | null } = {},
 ): string {
   let out = businessCaseToMarkdown(draft, opts);
+  const t = opts.triage;
+  if (t && t.recommendation) {
+    const rec = t.recommendation.replace(/_/g, " ");
+    out +=
+      `\n## Feasibility triage\n\n` +
+      `- **Recommendation:** ${rec}\n` +
+      (t.benefit ? `- **Benefit:** ${t.benefit}\n` : "") +
+      (t.effort ? `- **Effort:** ${t.effort}\n` : "") +
+      (t.data_readiness ? `- **Data readiness:** ${t.data_readiness}\n` : "") +
+      (t.confidence ? `- **Confidence:** ${t.confidence}\n` : "") +
+      (t.rationale ? `- **Rationale:** ${t.rationale}\n` : "");
+  }
   if (solution && Object.keys(solution).length > 0) {
     out += "\n" + solutionDesignToMarkdown(solution);
   }

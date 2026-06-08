@@ -42,13 +42,30 @@ export function SaveIdeaButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedTick, setSavedTick] = useState(false);
+  const [similar, setSimilar] = useState(0);
+
+  const theme = (draft?.theme as string) || "";
 
   function start() {
     setName(name || (typeof window !== "undefined" ? localStorage.getItem(NAME_KEY) ?? "" : ""));
     setTeam(team || (typeof window !== "undefined" ? localStorage.getItem(TEAM_KEY) ?? "" : ""));
     setTitle(title || (draft?.bottleneck ? String(draft.bottleneck).slice(0, 80) : ""));
     setError(null);
+    setSimilar(0);
     setOpen(true);
+    // Surface existing ideas in the same theme so people can avoid duplicates.
+    if (theme) {
+      fetch("/api/portfolio")
+        .then((r) => r.json())
+        .then((d) => {
+          const n = (d.ideas ?? []).filter(
+            (i: { id: string; draft?: { theme?: string } }) =>
+              i.id !== ideaId && (i.draft?.theme ?? "") === theme,
+          ).length;
+          setSimilar(n);
+        })
+        .catch(() => {});
+    }
   }
 
   async function save() {
@@ -104,6 +121,21 @@ export function SaveIdeaButton({
           <div className="fixed inset-0 z-40 bg-st-ink/40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-card-lg">
             <p className="mb-3 text-sm font-semibold text-st-navy">Submit to the pipeline</p>
+
+            {theme && (
+              <div className="mb-3 rounded-lg bg-st-teal/8 px-3 py-2 text-[11px] text-st-slate/80">
+                Theme: <span className="font-semibold text-st-teal-600">{theme}</span>
+                {similar > 0 && (
+                  <>
+                    {" "}
+                    · {similar} similar idea{similar > 1 ? "s" : ""} already in the pipeline —{" "}
+                    <a href="/pipeline" className="font-medium text-st-teal-600 underline">
+                      check first
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
 
             <label className={labelCls}>Your name</label>
             <input

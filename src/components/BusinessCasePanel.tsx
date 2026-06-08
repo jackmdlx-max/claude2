@@ -17,6 +17,8 @@ import { download } from "@/lib/download";
 /** Friendly labels for the fields we know about; unknown keys are humanised. */
 const LABELS: Record<string, string> = {
   bottleneck: "Bottleneck",
+  theme: "Theme",
+  theme_detail: "Theme detail",
   purpose: "Purpose",
   decisions_supported: "Decisions supported",
   relied_on_by: "Relied on by",

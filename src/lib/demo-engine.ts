@@ -1,4 +1,5 @@
 import type { ChatEnvelope, ChatMessage, SolutionDesign, Triage } from "./types";
+import { classifyTheme } from "./themes";
 
 /**
  * Demo mode lets ST-Streamline run as a fully clickable, scripted walkthrough
@@ -90,6 +91,8 @@ interface CapturedAnswers {
 function buildDraft(captured: CapturedAnswers): Record<string, unknown> {
   const draft: Record<string, unknown> = {
     bottleneck: captured.bottleneck,
+    theme: classifyTheme(captured.bottleneck),
+    theme_detail: clip(captured.bottleneck, 60),
     strategic_alignment: STRATEGIC_ALIGNMENT,
   };
   if (captured.purpose !== undefined) draft.purpose = captured.purpose;

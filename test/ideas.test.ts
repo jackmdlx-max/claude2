@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { roiForDraft, summarisePortfolio, type StoredIdea } from "../src/lib/ideas";
+import {
+  roiForDraft,
+  summarisePortfolio,
+  groupByTheme,
+  type StoredIdea,
+} from "../src/lib/ideas";
 
 test("roiForDraft computes weekly/monthly/yearly and cost at the default rate", () => {
   const roi = roiForDraft({ hours_per_week: 5, people_affected: 4 });
@@ -50,6 +55,19 @@ test("summarisePortfolio totals, groups by team/system and ranks by value", () =
   assert.equal(excel?.count, 2);
   // Top by value is the Finance idea.
   assert.equal(s.topByValue[0].id, "c");
+});
+
+test("groupByTheme clusters ideas and ranks groups by count then value", () => {
+  const groups = groupByTheme([
+    idea({ id: "a", draft: { theme: "Optioneering & options appraisal", hours_per_week: 4, people_affected: 2 } }),
+    idea({ id: "b", draft: { theme: "Optioneering & options appraisal", hours_per_week: 1, people_affected: 1 } }),
+    idea({ id: "c", draft: { theme: "Cost estimating & commercial", hours_per_week: 10, people_affected: 1 } }),
+    idea({ id: "d", draft: {} }), // no theme → Unclassified
+  ]);
+  assert.equal(groups[0].theme, "Optioneering & options appraisal");
+  assert.equal(groups[0].count, 2);
+  const unclassified = groups.find((g) => g.theme === "Unclassified");
+  assert.equal(unclassified?.count, 1);
 });
 
 test("ideas with no numbers contribute zero and group under Unassigned", () => {

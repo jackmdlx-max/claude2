@@ -16,6 +16,10 @@ export interface ChatMessage {
  */
 export interface BusinessCaseDraft {
   bottleneck?: string;
+  /** Canonical theme for grouping/dedupe (one of THEMES). */
+  theme?: string;
+  /** Finer, idea-specific descriptor, e.g. "wastewater treatment optioneering". */
+  theme_detail?: string;
   /** Why the task is done / what it produces. */
   purpose?: string;
   /** Downstream decisions or outputs that hang off the task. */

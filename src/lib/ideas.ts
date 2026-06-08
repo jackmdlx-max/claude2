@@ -50,6 +50,32 @@ export function roiForDraft(
   };
 }
 
+export interface ThemeGroup {
+  theme: string;
+  count: number;
+  yearlyCostGBP: number;
+  ideas: StoredIdea[];
+}
+
+/** Group ideas by their canonical theme so duplicates cluster together. */
+export function groupByTheme(ideas: StoredIdea[]): ThemeGroup[] {
+  const map = new Map<string, StoredIdea[]>();
+  for (const idea of ideas) {
+    const theme = (idea.draft?.theme as string)?.trim() || "Unclassified";
+    const list = map.get(theme);
+    if (list) list.push(idea);
+    else map.set(theme, [idea]);
+  }
+  return Array.from(map.entries())
+    .map(([theme, list]) => ({
+      theme,
+      count: list.length,
+      yearlyCostGBP: list.reduce((s, i) => s + i.roi.yearlyCostGBP, 0),
+      ideas: list,
+    }))
+    .sort((a, b) => b.count - a.count || b.yearlyCostGBP - a.yearlyCostGBP);
+}
+
 export interface PortfolioSummary {
   count: number;
   totalWeeklyHours: number;

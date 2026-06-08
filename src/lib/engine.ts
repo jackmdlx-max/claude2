@@ -2,6 +2,7 @@ import type { ChatEnvelope, ChatMessage } from "./types";
 import { extractEnvelope, normaliseEnvelope } from "./envelope";
 import { prepareMessages } from "./prepare-messages";
 import { ST_STREAMLINE_SYSTEM_PROMPT } from "./system-prompt";
+import { THEMES } from "./themes";
 
 export const DEFAULT_MAX_TOKENS = 3000;
 
@@ -29,6 +30,15 @@ export const ENVELOPE_TOOL = {
           "Validated metrics so far, or omit/null while still in opening context/discovery.",
         properties: {
           bottleneck: { type: "string" },
+          theme: {
+            type: "string",
+            enum: [...THEMES],
+            description: "Canonical theme so similar ideas group together — pick the best fit.",
+          },
+          theme_detail: {
+            type: "string",
+            description: "A short specific descriptor, e.g. 'wastewater treatment optioneering'.",
+          },
           purpose: { type: "string" },
           decisions_supported: { type: "string" },
           relied_on_by: { type: "string" },

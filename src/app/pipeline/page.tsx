@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { summarisePortfolio, type IdeaStatus, type StoredIdea } from "@/lib/ideas";
+import {
+  summarisePortfolio,
+  groupByTheme,
+  type IdeaStatus,
+  type StoredIdea,
+} from "@/lib/ideas";
 import { formatGBP } from "@/lib/roi";
 import { getOwnerId } from "@/lib/owner";
 import { TriageBadge } from "@/components/TriageBadge";
@@ -32,6 +37,126 @@ function initials(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
+interface CardHandlers {
+  owner: string;
+  onVote: (id: string) => void;
+  onStatus: (id: string, s: IdeaStatus) => void;
+  onRemove: (id: string) => void;
+}
+
+function IdeaCard({ idea: i, owner, onVote, onStatus, onRemove }: { idea: StoredIdea } & CardHandlers) {
+  const st = STATUS[i.status] ?? STATUS.captured;
+  const systems = (i.draft?.systems_involved ?? []).slice(0, 4);
+  const who = i.submitterName || "Anonymous";
+  const voteCount = i.votes?.length ?? 0;
+  const voted = (i.votes ?? []).includes(owner);
+  const mine = i.ownerId === owner;
+  const detail = (i.draft?.theme_detail as string) || "";
+
+  return (
+    <article className="st-card flex flex-col p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${st.cls}`}
+          >
+            {st.label}
+          </span>
+          <select
+            value={i.status}
+            onChange={(e) => onStatus(i.id, e.target.value as IdeaStatus)}
+            aria-label="Change status"
+            className="st-focus rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500"
+          >
+            {STATUS_OPTS.map((s) => (
+              <option key={s} value={s}>
+                {STATUS[s].label}
+              </option>
+            ))}
+          </select>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <TriageBadge triage={i.triage} />
+          <span className="text-[11px] text-slate-400">{timeAgo(i.updatedAt)}</span>
+        </span>
+      </div>
+
+      <h2 className="font-display text-base font-semibold leading-snug text-st-navy">{i.title}</h2>
+
+      <div className="mt-1.5 flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-st-teal/15 text-[10px] font-semibold text-st-teal-600">
+          {initials(who)}
+        </span>
+        <span className="text-xs text-slate-500">
+          {who}
+          {i.team ? ` · ${i.team}` : ""}
+          {mine ? " · you" : ""}
+        </span>
+      </div>
+
+      {detail && <p className="mt-2 text-[11px] font-medium text-st-teal-600">{detail}</p>}
+
+      {i.draft?.bottleneck && (
+        <p className="mt-2 line-clamp-2 text-sm text-st-slate/80">{String(i.draft.bottleneck)}</p>
+      )}
+
+      {systems.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {systems.map((s) => (
+            <span
+              key={String(s)}
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"
+            >
+              {String(s)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onVote(i.id)}
+            aria-pressed={voted}
+            className={`st-focus flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition ${
+              voted
+                ? "bg-st-teal/15 text-st-teal-600 ring-st-teal/30"
+                : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            ▲ {voteCount}
+          </button>
+          <span className="text-xs text-slate-400">
+            {i.roi.yearlyCostGBP > 0 ? (
+              <span className="font-semibold text-st-teal-600">
+                {formatGBP(i.roi.yearlyCostGBP)}/yr
+              </span>
+            ) : (
+              "Not quantified"
+            )}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {mine && (
+            <button
+              onClick={() => onRemove(i.id)}
+              className="st-focus text-xs font-medium text-slate-400 hover:text-red-500"
+            >
+              Delete
+            </button>
+          )}
+          <Link
+            href={`/?idea=${i.id}`}
+            className="text-xs font-semibold text-st-teal-600 hover:underline"
+          >
+            Open →
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function PipelinePage() {
   const [ideas, setIdeas] = useState<StoredIdea[]>([]);
   const [persistent, setPersistent] = useState(true);
@@ -41,7 +166,9 @@ export default function PipelinePage() {
   const [query, setQuery] = useState("");
   const [mineOnly, setMineOnly] = useState(false);
   const [team, setTeam] = useState("");
+  const [theme, setTheme] = useState("");
   const [sort, setSort] = useState<"newest" | "value" | "support">("newest");
+  const [grouped, setGrouped] = useState(true);
 
   useEffect(() => {
     fetch("/api/portfolio")
@@ -60,7 +187,7 @@ export default function PipelinePage() {
     setIdeas((prev) => prev.map((i) => (i.id === id ? fn(i) : i)));
   }, []);
 
-  const toggleVote = useCallback(
+  const onVote = useCallback(
     (id: string) => {
       patch(id, (i) => {
         const votes = i.votes ?? [];
@@ -69,14 +196,12 @@ export default function PipelinePage() {
           votes: votes.includes(owner) ? votes.filter((v) => v !== owner) : [...votes, owner],
         };
       });
-      fetch(`/api/ideas/${id}/vote`, { method: "POST", headers: { "x-owner-id": owner } }).catch(
-        () => {},
-      );
+      fetch(`/api/ideas/${id}/vote`, { method: "POST", headers: { "x-owner-id": owner } }).catch(() => {});
     },
     [owner, patch],
   );
 
-  const changeStatus = useCallback(
+  const onStatus = useCallback(
     (id: string, status: IdeaStatus) => {
       patch(id, (i) => ({ ...i, status }));
       fetch(`/api/ideas/${id}/status`, {
@@ -88,12 +213,10 @@ export default function PipelinePage() {
     [owner, patch],
   );
 
-  const remove = useCallback(
+  const onRemove = useCallback(
     (id: string) => {
       setIdeas((prev) => prev.filter((i) => i.id !== id));
-      fetch(`/api/ideas/${id}`, { method: "DELETE", headers: { "x-owner-id": owner } }).catch(
-        () => {},
-      );
+      fetch(`/api/ideas/${id}`, { method: "DELETE", headers: { "x-owner-id": owner } }).catch(() => {});
     },
     [owner],
   );
@@ -102,14 +225,22 @@ export default function PipelinePage() {
     () => Array.from(new Set(ideas.map((i) => (i.team || "Unassigned").trim()))).sort(),
     [ideas],
   );
+  const themes = useMemo(
+    () =>
+      Array.from(
+        new Set(ideas.map((i) => (i.draft?.theme as string)?.trim()).filter(Boolean) as string[]),
+      ).sort(),
+    [ideas],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = ideas.filter((i) => {
       if (mineOnly && i.ownerId !== owner) return false;
       if (team && (i.team || "Unassigned").trim() !== team) return false;
+      if (theme && ((i.draft?.theme as string)?.trim() || "Unclassified") !== theme) return false;
       if (q) {
-        const hay = [i.title, i.submitterName, i.team, i.draft?.bottleneck]
+        const hay = [i.title, i.submitterName, i.team, i.draft?.bottleneck, i.draft?.theme, i.draft?.theme_detail]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -124,9 +255,11 @@ export default function PipelinePage() {
           ? (b.votes?.length ?? 0) - (a.votes?.length ?? 0)
           : b.updatedAt - a.updatedAt,
     );
-  }, [ideas, query, mineOnly, team, sort, owner]);
+  }, [ideas, query, mineOnly, team, theme, sort, owner]);
 
   const summary = useMemo(() => summarisePortfolio(filtered), [filtered]);
+  const groups = useMemo(() => groupByTheme(filtered), [filtered]);
+  const handlers: CardHandlers = { owner, onVote, onStatus, onRemove };
   const inputCls =
     "st-focus rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white";
 
@@ -156,9 +289,17 @@ export default function PipelinePage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search ideas, people, teams…"
-            className={`${inputCls} min-w-[160px] flex-1 placeholder:text-white/40`}
+            placeholder="Search ideas, people, themes…"
+            className={`${inputCls} min-w-[150px] flex-1 placeholder:text-white/40`}
           />
+          <select value={theme} onChange={(e) => setTheme(e.target.value)} className={inputCls}>
+            <option value="">All themes</option>
+            {themes.map((t) => (
+              <option key={t} value={t} className="text-st-navy">
+                {t}
+              </option>
+            ))}
+          </select>
           <select value={team} onChange={(e) => setTeam(e.target.value)} className={inputCls}>
             <option value="">All teams</option>
             {teams.map((t) => (
@@ -177,12 +318,11 @@ export default function PipelinePage() {
             <option value="support" className="text-st-navy">Most supported</option>
           </select>
           <label className="flex items-center gap-1.5 text-xs text-white/80">
-            <input
-              type="checkbox"
-              checked={mineOnly}
-              onChange={(e) => setMineOnly(e.target.checked)}
-              className="accent-st-teal"
-            />
+            <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} className="accent-st-teal" />
+            Group by theme
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-white/80">
+            <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} className="accent-st-teal" />
             Mine
           </label>
         </div>
@@ -218,120 +358,35 @@ export default function PipelinePage() {
             "No ideas match your filters."
           )}
         </div>
+      ) : grouped ? (
+        <div className="flex flex-col gap-5">
+          {groups.map((g) => (
+            <section key={g.theme}>
+              <div className="mb-2 flex items-center gap-2">
+                <h2 className="font-display text-sm font-semibold text-st-navy">{g.theme}</h2>
+                <span className="rounded-full bg-st-teal/10 px-2 py-0.5 text-[11px] font-semibold text-st-teal-600">
+                  {g.count}
+                </span>
+                {g.yearlyCostGBP > 0 && (
+                  <span className="text-[11px] text-slate-400">{formatGBP(g.yearlyCostGBP)}/yr</span>
+                )}
+                {g.count > 1 && (
+                  <span className="text-[11px] text-st-gold">· possible overlap — review for duplicates</span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {g.ideas.map((i) => (
+                  <IdeaCard key={i.id} idea={i} {...handlers} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {filtered.map((i) => {
-            const st = STATUS[i.status] ?? STATUS.captured;
-            const systems = (i.draft?.systems_involved ?? []).slice(0, 4);
-            const who = i.submitterName || "Anonymous";
-            const voteCount = i.votes?.length ?? 0;
-            const voted = (i.votes ?? []).includes(owner);
-            const mine = i.ownerId === owner;
-            return (
-              <article key={i.id} className="st-card flex flex-col p-4">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${st.cls}`}
-                    >
-                      {st.label}
-                    </span>
-                    <select
-                      value={i.status}
-                      onChange={(e) => changeStatus(i.id, e.target.value as IdeaStatus)}
-                      aria-label="Change status"
-                      className="st-focus rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500"
-                    >
-                      {STATUS_OPTS.map((s) => (
-                        <option key={s} value={s}>
-                          {STATUS[s].label}
-                        </option>
-                      ))}
-                    </select>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <TriageBadge triage={i.triage} />
-                    <span className="text-[11px] text-slate-400">{timeAgo(i.updatedAt)}</span>
-                  </span>
-                </div>
-
-                <h2 className="font-display text-base font-semibold leading-snug text-st-navy">
-                  {i.title}
-                </h2>
-
-                <div className="mt-1.5 flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-st-teal/15 text-[10px] font-semibold text-st-teal-600">
-                    {initials(who)}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {who}
-                    {i.team ? ` · ${i.team}` : ""}
-                    {mine ? " · you" : ""}
-                  </span>
-                </div>
-
-                {i.draft?.bottleneck && (
-                  <p className="mt-2.5 line-clamp-2 text-sm text-st-slate/80">
-                    {String(i.draft.bottleneck)}
-                  </p>
-                )}
-
-                {systems.length > 0 && (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {systems.map((s) => (
-                      <span
-                        key={String(s)}
-                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"
-                      >
-                        {String(s)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleVote(i.id)}
-                      aria-pressed={voted}
-                      className={`st-focus flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition ${
-                        voted
-                          ? "bg-st-teal/15 text-st-teal-600 ring-st-teal/30"
-                          : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50"
-                      }`}
-                    >
-                      ▲ {voteCount}
-                    </button>
-                    <span className="text-xs text-slate-400">
-                      {i.roi.yearlyCostGBP > 0 ? (
-                        <span className="font-semibold text-st-teal-600">
-                          {formatGBP(i.roi.yearlyCostGBP)}/yr
-                        </span>
-                      ) : (
-                        "Not quantified"
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {mine && (
-                      <button
-                        onClick={() => remove(i.id)}
-                        className="st-focus text-xs font-medium text-slate-400 hover:text-red-500"
-                      >
-                        Delete
-                      </button>
-                    )}
-                    <Link
-                      href={`/?idea=${i.id}`}
-                      className="text-xs font-semibold text-st-teal-600 hover:underline"
-                    >
-                      Open →
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+          {filtered.map((i) => (
+            <IdeaCard key={i.id} idea={i} {...handlers} />
+          ))}
         </section>
       )}
     </main>

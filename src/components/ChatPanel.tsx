@@ -10,6 +10,8 @@ interface ChatPanelProps {
   onEnvelope: (envelope: ChatEnvelope, userTurns: number) => void;
   initialMessages?: ChatMessage[];
   onMessagesChange?: (messages: ChatMessage[]) => void;
+  /** Context (name/role/team) sent as the opening turn so the engine skips warm-up. */
+  seedContext?: string;
 }
 
 const STARTERS = [
@@ -33,7 +35,12 @@ function countUserTurns(messages: ChatMessage[]): number {
   return messages.filter((m) => m.role === "user").length;
 }
 
-export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: ChatPanelProps) {
+export function ChatPanel({
+  onEnvelope,
+  initialMessages,
+  onMessagesChange,
+  seedContext,
+}: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,8 +71,9 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
     if (started.current) return;
     started.current = true;
     if ((initialMessages?.length ?? 0) > 0) return;
-    void runEngine([]);
-  }, [runEngine, initialMessages]);
+    // Seed with the user's intro so the engine skips the role/team warm-up.
+    void runEngine(seedContext ? [{ role: "user", content: seedContext }] : []);
+  }, [runEngine, initialMessages, seedContext]);
 
   useEffect(() => {
     onMessagesChange?.(messages);
@@ -124,7 +132,7 @@ export function ChatPanel({ onEnvelope, initialMessages, onMessagesChange }: Cha
         aria-live="polite"
         aria-relevant="additions"
         aria-label="Discovery conversation"
-        className="st-scroll flex-1 space-y-3.5 overflow-y-auto px-4 py-5 sm:px-5"
+        className="st-scroll min-h-0 flex-1 space-y-3.5 overflow-y-auto px-4 py-5 sm:px-5"
       >
         {messages.map((m, i) => (
           <div

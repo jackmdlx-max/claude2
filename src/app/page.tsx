@@ -9,6 +9,7 @@ import { MockupPanel } from "@/components/MockupPanel";
 import { StageIndicator } from "@/components/StageIndicator";
 import { ConfigStatus } from "@/components/ConfigStatus";
 import { SaveIdeaButton } from "@/components/SaveIdeaButton";
+import { WelcomeDialog, type Profile } from "@/components/WelcomeDialog";
 import { Logo } from "@/components/Logo";
 import type {
   BusinessCaseDraft,
@@ -19,6 +20,7 @@ import type {
 } from "@/lib/types";
 import { clearSession, loadSession, saveSession } from "@/lib/session-store";
 import { deriveStage } from "@/lib/stage";
+import { discoveryProgress } from "@/lib/progress";
 import { exportPackToMarkdown } from "@/lib/business-case";
 import { download } from "@/lib/download";
 
@@ -35,6 +37,21 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
   const [sessionKey, setSessionKey] = useState(0);
+
+  // Welcome gate: each visitor introduces themselves and starts fresh, so a new
+  // person never lands on the previous person's conversation.
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [savedExists, setSavedExists] = useState(false);
+  const [seedContext, setSeedContext] = useState<string>("");
+
+  const profileDefaults: Profile =
+    typeof window === "undefined"
+      ? { name: "", role: "", team: "" }
+      : {
+          name: localStorage.getItem("capital-ai:name") ?? "",
+          role: localStorage.getItem("capital-ai:role") ?? "",
+          team: localStorage.getItem("capital-ai:team") ?? "",
+        };
 
   useEffect(() => {
     // Revisiting a saved idea: /?idea=<id> loads it back into the session.
@@ -61,6 +78,35 @@ export default function Home() {
       return;
     }
 
+    // Don't auto-restore the previous conversation — gate on the welcome dialog
+    // so a new person starts fresh (they can choose to resume if it's them).
+    setSavedExists(Boolean(loadSession()));
+    setHydrated(true);
+    setWelcomeOpen(true);
+  }, []);
+
+  function startFresh(p: Profile) {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("capital-ai:name", p.name);
+      localStorage.setItem("capital-ai:role", p.role);
+      localStorage.setItem("capital-ai:team", p.team);
+    }
+    clearSession();
+    setDraft(null);
+    setSolutionDesign(null);
+    setTriage(null);
+    setMockupPrompt(null);
+    setStage(1);
+    setMessages([]);
+    setInitialMessages([]);
+    setIdeaId(null);
+    const who = `I'm ${p.name ? p.name + ", " : ""}a ${p.role}${p.team ? " in " + p.team : ""}.`;
+    setSeedContext(`${who} I'd like to find a repetitive manual task worth automating.`);
+    setSessionKey((k) => k + 1);
+    setWelcomeOpen(false);
+  }
+
+  function resumePrevious() {
     const restored = loadSession();
     if (restored) {
       setMessages(restored.messages);
@@ -71,8 +117,10 @@ export default function Home() {
       setMockupPrompt(restored.mockupPrompt);
       setStage(restored.stage);
     }
-    setHydrated(true);
-  }, []);
+    setSeedContext("");
+    setSessionKey((k) => k + 1);
+    setWelcomeOpen(false);
+  }
 
   useEffect(() => {
     if (!hydrated || messages.length === 0) return;
@@ -108,7 +156,8 @@ export default function Home() {
     setMessages([]);
     setInitialMessages([]);
     setIdeaId(null);
-    setSessionKey((k) => k + 1);
+    setSavedExists(false);
+    setWelcomeOpen(true);
   }
 
   function exportPack() {
@@ -120,12 +169,13 @@ export default function Home() {
     );
   }
 
+  const progress = discoveryProgress(draft, solutionDesign);
   const headerBtn =
     "rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/20 st-focus";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-3 sm:p-5">
-      <header className="overflow-hidden rounded-2xl bg-st-hero shadow-card-lg">
+    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 p-3 sm:p-5 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+      <header className="shrink-0 overflow-hidden rounded-2xl bg-st-hero shadow-card-lg">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
           <div className="flex items-center gap-3">
             <Logo className="h-10 w-10 shrink-0" />
@@ -166,28 +216,61 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className="border-t border-white/10 px-4 py-3 sm:px-5">
+        <div className="space-y-2.5 border-t border-white/10 px-4 py-3 sm:px-5">
           <StageIndicator stage={stage} />
+          <div>
+            <div className="mb-1 flex items-center justify-between text-[11px]">
+              <span className={progress.complete ? "font-medium text-st-teal-300" : "text-white/55"}>
+                {progress.complete ? "✓ " : ""}
+                {progress.label}
+              </span>
+              <span className="font-semibold text-white/70">{progress.percent}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  progress.complete
+                    ? "bg-emerald-400"
+                    : "bg-gradient-to-r from-st-teal to-st-cyan"
+                }`}
+                style={{ width: `${progress.percent}%` }}
+              />
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-5 lg:flex-row">
-        <section className="h-[68vh] lg:h-auto lg:w-[44%] lg:min-w-[380px]">
-          {hydrated && (
+      <div className="flex flex-col gap-5 lg:min-h-0 lg:flex-1 lg:flex-row">
+        <section className="h-[62vh] shrink-0 lg:h-auto lg:min-h-0 lg:w-[44%] lg:min-w-[380px] lg:shrink">
+          {hydrated && !welcomeOpen ? (
             <ChatPanel
               key={sessionKey}
               onEnvelope={handleEnvelope}
               initialMessages={initialMessages}
               onMessagesChange={handleMessagesChange}
+              seedContext={seedContext}
             />
+          ) : (
+            <div className="st-card flex h-full items-center justify-center p-8 text-center text-sm text-slate-400">
+              Tell us a little about yourself to begin.
+            </div>
           )}
         </section>
-        <aside className="st-scroll flex flex-1 flex-col gap-5 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+        <aside className="st-scroll flex flex-col gap-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
           <BusinessCasePanel draft={draft} />
           <SolutionDesignPanel solution={solutionDesign} triage={triage} />
           <MockupPanel prompt={mockupPrompt} />
         </aside>
       </div>
+
+      {welcomeOpen && (
+        <WelcomeDialog
+          savedExists={savedExists}
+          defaults={profileDefaults}
+          onStart={startFresh}
+          onResume={resumePrevious}
+        />
+      )}
     </main>
   );
 }
